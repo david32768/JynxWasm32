@@ -2,8 +2,6 @@ package jynx;
 
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.Base64;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -12,7 +10,6 @@ import parse.Data_segment;
 import parse.FnType;
 import parse.Global;
 import parse.Kind;
-import parse.KindName;
 
 import parse.Limits;
 import parse.LocalFunction;
@@ -27,25 +24,28 @@ public class JynxModule {
     private final WasmModule module;
     private final PrintWriter pw;
     private final String moduleName;
+    private final String fileName;
 
-    private JynxModule(WasmModule module, PrintWriter pw) {
+    private JynxModule(WasmModule module, PrintWriter pw, String filename) {
         this.module = module;
         this.pw = pw;
-        this.moduleName = module.getName();
+        this.moduleName = javaSimpleName(module.getName());
+        this.fileName = filename;
     }
     
     
     public static void output(WasmModule module, String file) throws IOException {
-        file = file.substring(0, file.length() - 5) + ".jx";
-        try (PrintWriter pw = new PrintWriter(Files.newOutputStream(Paths.get(file)))) {
-            JynxModule jm = new JynxModule(module, pw);
+        try (PrintWriter pw = new PrintWriter(System.out)) {
+            JynxModule jm = new JynxModule(module, pw,file);
             jm.print();
         }
     }
 
     private void print() {
         pw.format(".version V1_8 WARN_INDENT GENERATE_LINE_NUMBERS CHECK_METHOD_REFERENCES PREPEND_CLASSNAME%n");
-        pw.format(".class public %s%n",module.getName());
+        pw.println(".macrolib wasm32MVP");
+        pw.format(".source %s%n",fileName);
+        pw.format(".class public %s%n",moduleName);
         pw.format(".super java/lang/Object%n");
         WasmFunction start = module.getStart();
         if (start != null) {
@@ -271,8 +271,12 @@ public class JynxModule {
         int i = I;
         if (Character.isJavaIdentifierPart(i)) {
             return String.valueOf((char)i);
+        } else if (i == '-') {
+            return "_";
+        } else if (i == '.') {
+            return "$DOT$";
         } else {
-            return (i == '.'?"$DOT$":"$" + Integer.toHexString(i) + "$");
+            return "$" + Integer.toHexString(i) + "$";
         }
     }
     

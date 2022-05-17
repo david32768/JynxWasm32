@@ -14,8 +14,8 @@ public class Main {
 
     public static void main(String[] args) throws Exception {
         if (args.length != 1) {
-            System.out.println("Usage: Parse wasm-file");
-            System.exit(0);
+            System.out.println("Usage: wasm-file");
+            System.exit(1);
         }
         String file = args[0];
         if (!file.endsWith(".wasm")) {
