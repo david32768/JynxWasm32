@@ -16,10 +16,12 @@ public class LocalFunction implements WasmFunction {
     private ArrayList<Instruction> insts;
     private final FnType fntype;
     private KindName kindName;
+    private boolean found;
     
     public LocalFunction(FnType fntype, KindName kindName) {        // PlaceHolder
         this.fntype = fntype;
         this.kindName = kindName;
+        this.found = false;
     }
 
     public ArrayList<Instruction> getInsts() {
@@ -35,18 +37,24 @@ public class LocalFunction implements WasmFunction {
         return locals;
     }
 
+    @Override
+    public boolean hasCode() {
+        return found;
+    }
+
     private void setLocalFunction(int fnnum, ArrayList<Local> locals,
             ArrayList<Instruction> insts, FnType fntype) { //, int maxstacksz) {
         this.locals = locals;
         this.insts = insts;
         if (fnnum != kindName.getNumber()) {
-            String msg = String.format("set fnnum %d is differnet from original %d",fnnum,kindName.getNumber());
+            String msg = String.format("set fnnum %d is different from original %d",fnnum,kindName.getNumber());
             throw new IllegalStateException(msg);
         }
         if (!this.fntype.equals(fntype)) {
-            String msg = String.format("set fntype %s is differnet from original %s",fntype,this.fntype);
+            String msg = String.format("set fntype %s is different from original %s",fntype,this.fntype);
             throw new IllegalStateException(msg);
         }
+        this.found = true;
     }
 
     public Local getLocal(int index) {
@@ -213,6 +221,12 @@ Function bodies consist of a sequence of local variable declarations followed by
      */
     public static void parse(WasmModule module, Section section) {
         int bodies = section.vecsz();
+        int localfns = module.localfuns();
+        if (bodies != localfns) {
+            String msg = String.format("function and code section have inconsistent lengths%n localfns = %d bodies = %d",
+                    localfns,bodies);
+            throw new IllegalArgumentException(msg);
+        }
         for (int i = 0; i < bodies; i++) {
             int fnnum = module.getLocalFnIndex(i);
             LocalFunction localfn = (LocalFunction)module.atfuncidx(fnnum);

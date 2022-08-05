@@ -38,7 +38,8 @@ public class ImmediateOp implements Op {
     public static ImmediateOp getMemfn(OpCode opcode, Section section) {
         int zero = section.getUByte();
         if (zero != 0) {
-            throw new IllegalArgumentException();
+            String msg = String.format("zero flag expected%nopcode = %s flag = %d",opcode,zero);
+            throw new IllegalArgumentException(msg);
         }
         return new ImmediateOp(opcode,zero);
     }

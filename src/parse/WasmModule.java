@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class WasmModule {
@@ -25,11 +24,8 @@ public class WasmModule {
     private int impmems = 0;
     private int impglobs = 0;
 
-    private final int version;
-
-    private WasmModule(String name, int version) {
+    private WasmModule(String name) {
         this.name = name;
-        this.version = version;
     }
 
     public String getName() {
@@ -94,7 +90,7 @@ public class WasmModule {
         } else {
             if (!curname.equals(name)) {
                 String msg = String.format("fnnum = %d parms = %s renaming local function from %s to %s",
-                        fnnum, fn.getFnType().jvmString(), curname, name);
+                        fnnum, fn.getFnType().wasmString(), curname, name);
                 fn.setName(name);
                 if (fn.isPrivate()) {
                     Logger.getGlobal().fine(msg);
@@ -115,6 +111,10 @@ public class WasmModule {
     
     public int funcidx() {
         return functions.size();
+    }
+    
+    public int localfuns() {
+        return functions.size() - impfns;
     }
     
     public int globidx() {
@@ -187,16 +187,28 @@ public class WasmModule {
     // spec 5.5.15
     public static WasmModule getModule(String name, ByteBuffer stream) throws IOException {
         stream.order(ByteOrder.LITTLE_ENDIAN);
+        if (stream.remaining() < 4) {
+            String msg = String.format("unexpected end%n length %d is less than required for magic header", stream.remaining());
+            throw new IllegalArgumentException(msg);
+        }
         int magic = stream.getInt();
         if (magic != 0x6d736100) {
             stream.order(ByteOrder.BIG_ENDIAN);
             magic = stream.getInt(0);
-            String message = String.format("magic number '/0asm' not present - found %08x", magic);
+            String message = String.format("magic header not detected%n '/0asm' not present - found %08x", magic);
             throw new IllegalArgumentException(message);
         }
+        if (stream.remaining() < 4) {
+            String msg = String.format("unexpected end%n remaining length %d is less than required for version", stream.remaining());
+            throw new IllegalArgumentException(msg);
+        }
         int version = stream.getInt();
+        if (version != 1) {
+            String msg = String.format("unknown binary version%n version = %d",version);
+            throw new IllegalArgumentException(msg);
+        }
         Logger.getGlobal().info(String.format("Version number = %d", version));
-        WasmModule module = new WasmModule(name,version);
+        WasmModule module = new WasmModule(name);
         while(stream.hasRemaining()) {
             int id = stream.get() & 0xff;
             SectionType type = SectionType.getInstance(id);
@@ -204,12 +216,15 @@ public class WasmModule {
             Logger.getGlobal().info(String.format("%s(%d) section payload = %d",
                     type,id,section.getPayload_len()));
             module.setLastId(id);
-            try {
-                type.parse(module, section);
-            } catch (UnsupportedOperationException ex) {
-                Logger.getGlobal().log(Level.SEVERE, "parse error in " + type.toString(), ex);
-                System.exit(1);
+            type.parse(module, section);
+            if (section.hasRemaining() && id != 0) {
+                String msg = String.format("section size mismatch%n in section %s(%d)",type,id);
+                throw new IllegalArgumentException(msg);
             }
+        }
+        if (module.localfuns() > 0 && !module.atfuncidx(module.getLocalFnIndex(0)).hasCode()) {
+            String msg = String.format("function and code section have inconsistent lengths%n");
+            throw new IllegalArgumentException(msg);
         }
         return module;
     }

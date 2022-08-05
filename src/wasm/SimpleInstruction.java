@@ -108,5 +108,16 @@ public class SimpleInstruction implements Instruction {
         return new SimpleInstruction(opcode, fntype,typestack.getLevel());
     }
     
+    public static Instruction combine(Instruction compareinst, Instruction select) {
+        OpCode compareop = compareinst.getOpCode();
+        assert compareop.getOpType() == OpType.COMPARE;
+        OpCode selectop = select.getOpCode();
+        assert selectop == OpCode.SELECT;
+        int code = (compareop.getCode() << 8) | selectop.getCode();
+        OpCode opcode = OpCode.getInstance(code);
+        FnType fntype = compareinst.getFnType().combine(select.getFnType());
+        return new SimpleInstruction(opcode, fntype, select.getLevel());
+    }
+    
 }
 

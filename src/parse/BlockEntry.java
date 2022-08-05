@@ -19,6 +19,15 @@ public class BlockEntry {
         this.fallThroughToEnd = false;
     }
 
+    public BlockEntry(OpCode opcode,BlockEntry block, ValueType vt) {
+        assert opcode == OpCode.ELSE;
+        this.opcode = opcode;
+        this.stackptr = block.getStackptr();
+        this.vt = vt;
+        this.branchToEnd = block.isBranchToEnd();
+        this.fallThroughToEnd = false;
+    }
+
     public boolean isEndReachable() {
         return branchToEnd || fallThroughToEnd;
     }

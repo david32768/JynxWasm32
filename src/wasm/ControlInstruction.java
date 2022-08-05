@@ -93,7 +93,7 @@ public class ControlInstruction extends SimpleInstruction {
         assert ifop == OpCode.IF;
         int code = (compareop.getCode() << 8) | ifop.getCode();
         OpCode op = OpCode.getInstance(code);
-        FnType fntype = compareinst.getFnType().changeRType(V00);
+        FnType fntype = compareinst.getFnType().combine(ifinst.getFnType());
         return new ControlInstruction(op, fntype, ifinst.getLevel(), null, ifinst.getBlockType());
     }
     

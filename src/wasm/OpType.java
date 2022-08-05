@@ -29,6 +29,7 @@ public enum OpType {
     CONTROL(ControlInstruction::control,ControlOp::getInstance),
     COMPAREIF(null,null),
     COMPAREBRIF(null,null),
+    COMPARESELECT(null,null),
     BRANCH_TABLE(BrTableInstruction::brtable,BrTableOp::getInstance),
     BRANCH(BranchInstruction::branch,BranchOp::getInstance),
     ;

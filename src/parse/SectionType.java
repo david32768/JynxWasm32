@@ -46,7 +46,7 @@ public enum SectionType {
                 return st;
             }
         }
-        throw new IllegalArgumentException("unknown section type");
+        throw new IllegalArgumentException(String.format("invalid section id%n section id = %d",idx));
     }
 
     private static void parseCustom(WasmModule module, Section section) {

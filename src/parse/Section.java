@@ -22,6 +22,11 @@ public final class Section {
         this.payload_len = getU32();
         this.position = this.sectionbb.position();
         int newlimit = this.sectionbb.position() + payload_len;
+        if (newlimit > buffer.limit()) {
+            String msg = String.format("unexpected end of section or function%n newlimit (%d) > buffer limit (%d)",
+                    newlimit,buffer.limit());
+            throw new IllegalArgumentException(msg);
+        }
         this.sectionbb.limit(newlimit);
         buffer.position(newlimit);  // after this section
         this.limit = newlimit;
@@ -80,12 +85,18 @@ public final class Section {
         return optype.getOp(opcode, this);
     }
 
+    private static final Charset UTF8 = Charset.forName("UTF-8");
+    
     // spec 5.2.4
     public String getName() {
         int len = vecsz();
         byte[] str = new byte[len];
         sectionbb.get(str);
-        return new String(str,Charset.forName("UTF-8"));
+        String name = new String(str,UTF8); //malformed chenged to \ufffd
+        if (name.contains("\ufffd")) {
+            throw new IllegalArgumentException("invalid UTF-8 encoding");
+        }
+        return name;
     }
     
     public byte[] byteArray(int length) {
@@ -99,10 +110,8 @@ public final class Section {
     }
     
     private byte unusedLEB(int N, boolean signed) {
-        int result = (-1 << (7 - (N % 7)));
-        if (!signed) {
-            result <<= 1;
-        }
+        int bits = signed? N - 1:N;
+        int result = (-1 << (bits % 7));
         result &= 0x7f;
         return (byte)result;
     }
@@ -114,7 +123,7 @@ public final class Section {
         for (int i = 0;i < N;i+=7) {   // limit to reading ceil(N/7) bytes - WebAssembly spec 5.2.2
             byte bit8 = sectionbb.get();
             result |= Integer.toUnsignedLong(bit8 & 0x7f) << i;
-            if (bit8 >= 0) {
+            if (bit8 >= 0) { // positive means last byte
                 int shift = 64 - (i + 7);
                 if (signed && shift > 0) {
                     result <<= shift;
@@ -124,7 +133,8 @@ public final class Section {
                     byte mask = unusedLEB(N,signed);
                     byte unused = signed && result < 0?mask:0;
                     if ((bit8 & mask) != unused) {
-                        String msg = String.format("malformed encoding - unused bits%nresult = %d bit8 = %02x mask = %016x",
+                        String msg = String.format("integer too large%n"
+                                + " unused bits%nresult = %d bit8 = %02x mask = %016x",
                                 result,bit8,mask);
                         throw new IllegalArgumentException(msg);
                     }
@@ -132,13 +142,14 @@ public final class Section {
                 return result;
             }
         }
-        throw new IllegalArgumentException("malformed encoding -  too long");
+        String msg = String.format("integer representation too long%n expected %s%d",signed?"":"U",N);
+        throw new IllegalArgumentException(msg);
     }
 
     public boolean getFlag() {
         int flag = sectionbb.get();
         if (flag != 0 && flag != 1) {
-            throw new IllegalArgumentException("flag not zero or one - " + flag);
+            throw new IllegalArgumentException("flag not zero or one: " + flag);
         }
         return flag == 1;
     }

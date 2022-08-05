@@ -54,7 +54,8 @@ public class ObjectOp implements Op {
                 index = section.typeidx();
                 index2 = section.getUByte();
                 if (index2 != 0) { // future table number?
-                    throw new IllegalArgumentException();
+                    String msg = String.format("zero flag expected%nopcode = %s flag = %d",opcode,index2);
+                    throw new IllegalArgumentException(msg);
                 }
                 break;
             default:

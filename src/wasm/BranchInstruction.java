@@ -67,7 +67,7 @@ public class BranchInstruction extends SimpleInstruction {
         assert ifop == OpCode.BR_IF;
         int code = (compareop.getCode() << 8) | ifop.getCode();
         OpCode op = OpCode.getInstance(code);
-        FnType fntype = compareinst.getFnType().changeRType(V00);
+        FnType fntype = compareinst.getFnType().combine(brinst.getFnType());
         return new BranchInstruction(op, fntype, brinst.getLevel(),((BranchInstruction)brinst).target);
     }
     

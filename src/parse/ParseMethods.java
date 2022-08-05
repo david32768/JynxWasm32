@@ -205,7 +205,7 @@ The start section declares the [start function](Modules.md#module-start-function
                         int idx = namesect.funcidx();
                         String nameidx = namesect.getName();
                         WasmFunction fn = module.atfuncidx(idx);
-                        String parms = fn.getFnType().jvmString();
+                        String parms = fn.getFnType().wasmString();
                         String demangled = rust.Demangle.demangle(nameidx);
                         nameidx = rust.Demangle.getMethodName(nameidx);
                         Integer used = names.put(nameidx + parms,idx);

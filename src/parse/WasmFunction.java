@@ -7,5 +7,8 @@ public interface WasmFunction extends Kind {
     default void setName(String name) {
         throw new UnsupportedOperationException();
     }
-    
+
+    default boolean hasCode() {
+        return false;
+    }
 }

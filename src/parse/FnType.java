@@ -22,6 +22,16 @@ public class FnType {
         System.arraycopy(parm, 0, this.parm, 1, parm.length);
     }
 
+    public FnType combine(FnType next) {
+        ValueType[] nextvts = next.getParm();
+        ValueType vt = nextvts[nextvts.length - 1];
+        assert vt == this.getRtype();
+        ValueType[] result = new ValueType[nextvts.length - 1 + this.numParms()];
+        System.arraycopy(nextvts, 0, result, 0, nextvts.length - 1);
+        System.arraycopy(parm, 1, result, nextvts.length - 1, parm.length - 1);
+        return new FnType(result);
+    }
+    
     public int numParms() {
         return parm.length - 1;
     }
@@ -51,6 +61,25 @@ public class FnType {
         }
         sb.append(')');
         sb.append(parm[0].getJvmtype());
+        return sb.toString();
+    }
+
+    public String wasmString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append('(');
+        for (int i = 1; i < parm.length;i++) {
+            if (i > 1) {
+                sb.append(',');
+            }
+            ValueType vt = parm[i];
+            sb.append(vt.name());
+        }
+        sb.append(")->");
+        if (parm[0] == V00) {
+            sb.append("()");
+        } else {
+            sb.append(parm[0].name());
+        }
         return sb.toString();
     }
 

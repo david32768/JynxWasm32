@@ -27,12 +27,12 @@ import wasm.MemoryInstruction;
 import wasm.ObjectInstruction;
 import wasm.OpCode;
 import wasm.OpType;
+import wasm.SimpleInstruction;
 import wasm.UnreachableInstruction;
 
 public class JynxFunction {
     
     public enum JvmOp {
-//        ldc,
         lookupswitch,
         ;
     }
@@ -48,7 +48,7 @@ public class JynxFunction {
         String jvmname = JynxModule.javaSimpleName(fn);
         String from = fn.getFieldName().equals(jvmname)?"":" ; " + fn.getFieldName();
         String access = fn.isPrivate()?"private":"public";
-        pw.format(".method %s static %s%s%s%n",access,jvmname,fn.getFnType().jvmString(),from);
+        pw.format(".method %s static %s%s%s%n",access,jvmname,fn.getFnType().wasmString(),from);
         for (Local local:fn.getLocals()) {
             if (local.isParm()) {
                 continue;
@@ -88,9 +88,23 @@ public class JynxFunction {
         if (num instanceof Long) {
             numstr = ((Long) num).toString() + 'L';
         } else if (num  instanceof Float) {
-            numstr = Float.toHexString((float)num) + 'F';
+            float fval = num.floatValue();
+            if (Float.isNaN(fval)) {
+                int rawf = Float.floatToRawIntBits(fval);
+                numstr = rawf < 0?"-":"";
+                numstr += "nan:" + Integer.toHexString(rawf & ~0xff800000);
+            } else {
+                numstr = Float.toHexString(fval) + 'F';
+            }
         } else if (num  instanceof Double) {
-            numstr = Double.toHexString((double)num);
+            double dval = num.doubleValue();
+            if (Double.isNaN(dval)) {
+                long rawf = Double.doubleToRawLongBits(num.doubleValue());
+                numstr = rawf < 0?"-":"";
+                numstr += "nan:" + Long.toHexString(rawf & ~0xfff0000000000000L);
+            } else {
+                numstr = Double.toHexString(dval);
+            }
         } else {
             numstr = num.toString();
         }
@@ -101,26 +115,28 @@ public class JynxFunction {
         Deque<Instruction>  result = new ArrayDeque<>();
         for (Instruction inst:insts) {
             OpCode opcode = inst.getOpCode();
-            switch(opcode) {
-                case IF:
-                    Instruction last = result.peekLast();
-                    if (last.getOpCode().getOpType() == OpType.COMPARE) {
-                        result.removeLast();
-                        inst = ControlInstruction.combine(last, inst);
-                    }
-                    break;
-                case BR_IF:
-                    BranchInstruction brinst = (BranchInstruction)inst;
-                    BranchTarget target = brinst.getTarget();
-                    FnType unwind = target.getUnwind();
-                    if (!needUnwind(unwind)) {
-                        last = result.peekLast();
-                        if (last.getOpCode().getOpType() == OpType.COMPARE) {
+            Instruction last = result.peekLast();
+            OpType lasttype = last == null? null : last.getOpCode().getOpType();
+            if (lasttype == OpType.COMPARE) {
+                switch(opcode) {
+                    case BR_IF:
+                        BranchInstruction brinst = (BranchInstruction)inst;
+                        BranchTarget target = brinst.getTarget();
+                        FnType unwind = target.getUnwind();
+                        if (!needUnwind(unwind)) {
                             result.removeLast();
                             inst = BranchInstruction.combine(last, inst);
                         }
-                    }
-                    break;
+                        break;
+                    case SELECT:
+                        result.removeLast();
+                        inst = SimpleInstruction.combine(last,inst);
+                        break;
+                    case IF:
+                        result.removeLast();
+                        inst = ControlInstruction.combine(last, inst);
+                        break;
+                }
             }
             result.addLast(inst);
         }
@@ -258,7 +274,7 @@ public class JynxFunction {
         if (!needUnwind(unwind)) {
             return;
         }
-        pw.format("%s  %s %s%n", spacer,"UNWIND",unwind.jvmString());
+        pw.format("%s  %s %s%n", spacer,"UNWIND",unwind.wasmString());
     }
 
     private void branch(String spacer,Instruction inst, String comment) {
@@ -384,17 +400,17 @@ public class JynxFunction {
             case GLOBAL_GET:
             case GLOBAL_SET:
                 name = JynxModule.javaLocalName(((Global)obj));
-                pw.format("%s  %s %s %s ; %s%n",spacer,opcode,name,varvt.getJvmtype(),comment);
+                pw.format("%s  %s%s %s ; %s%n",spacer,varvt.getPrefix(),opcode,name,comment);
                 break;
             case CALL:
                 WasmFunction called = (WasmFunction)obj;
                 name = JynxModule.javaLocalName(called);
-                pw.format("%s  %s %s%s ; %s%n",spacer,opcode, name, fntype.jvmString(),comment);
+                pw.format("%s  %s %s%s ; %s%n",spacer,opcode, name, fntype.wasmString(),comment);
                 break;
             case CALL_INDIRECT:
                 int tablenum = ((Table)obj).getTableNum();
                 pw.format("%s  %s %d %s ; %s%n",
-                        spacer,opcode,tablenum,fntype.jvmString(),comment);
+                        spacer,opcode,tablenum,fntype.wasmString(),comment);
                 break;
             default:
                 throw new AssertionError();

@@ -133,7 +133,7 @@ public class TypeStack {
                     vtstack.pop();
                 }
                 blocks.pop();
-                currentBlock = new BlockEntry(OpCode.ELSE,currentBlock.getStackptr(), vt);
+                currentBlock = new BlockEntry(OpCode.ELSE,currentBlock, vt);
                 blocks.push(currentBlock);
                 break;
             case END:

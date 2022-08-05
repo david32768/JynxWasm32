@@ -21,7 +21,7 @@ public class Global implements Kind {
     
     public Global(Section section, KindName kindName)  {
         this.type = section.getValueType();
-        this.mutable = section.getFlag();
+        this.mutable = getMutability(section);
         this.constinst = null;
         this.kindName = kindName;
         this.value = 0;
@@ -35,6 +35,15 @@ public class Global implements Kind {
         this.kindName = kindName;
     }
 
+    private static boolean getMutability(Section section) {
+        try {
+            return section.getFlag();
+        } catch (IllegalArgumentException ex) {
+            String msg = String.format("invalid mutability%n%s",ex.getMessage());
+            throw new IllegalArgumentException(msg,ex);
+        }
+    }
+    
     public ValueType getType() {
         return type;
     }
@@ -57,10 +66,12 @@ public class Global implements Kind {
         kindName = kindName.exportNames(module_name, field_name);
     }
 
+    @Override
     public String getModuleName() {
         return kindName.getModuleName();
     }
 
+    @Override
     public String getFieldName() {
         return kindName.getFieldName();
     }
@@ -103,7 +114,7 @@ Note that, in the MVP, only immutable global variables can be exported.
         int count = section.vecsz();
         for (int i = 0;i < count;i++) {
             ValueType type = section.getValueType();
-            boolean mutable = section.getFlag();
+            boolean mutable = getMutability(section);
             Instruction constinst = Expression.parseInstruction(module, section);
             KindName kn = new KindName(KindType.Global,module.getName(),null,Status.PRIVATE,module.globidx());
             Global global = new Global(type, mutable,constinst,kn);
