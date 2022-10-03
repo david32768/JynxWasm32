@@ -38,14 +38,23 @@ public class JynxFunction {
     }
     
     private final PrintWriter pw;
+    private final JavaName javaName;
 
-    public JynxFunction(PrintWriter pw) {
+    public JynxFunction(PrintWriter pw, JavaName javaName) {
         this.pw = pw;
+        this.javaName = javaName;
+    }
+
+    public void printStart(WasmFunction start) {
+        pw.format("; start function = %s%n",start.getFieldName());
+        pw.println(".method public static START()V");
+        pw.format("  %s %s()->()%n",OpCode.CALL,javaName.localName(start));
+        pw.format("  %s%n",OpCode.RETURN);
+        pw.println(".end_method");
     }
     
-    public static void printJVMInsts(WasmModule module, LocalFunction fn, PrintWriter pw) {
-        JynxFunction jynx = new JynxFunction(pw);
-        String jvmname = JynxModule.javaSimpleName(fn);
+    public void printJVMInsts(WasmModule module, LocalFunction fn) {
+        String jvmname = javaName.simpleName(fn);
         String from = fn.getFieldName().equals(jvmname)?"":" ; " + fn.getFieldName();
         String access = fn.isPrivate()?"private":"public";
         pw.format(".method %s static %s%s%s%n",access,jvmname,fn.getFnType().wasmString(),from);
@@ -74,7 +83,7 @@ public class JynxFunction {
            pw.format("  %s %d%n",OpCode.LOCAL_SET,local.getRelnum());
         }
         int localmax = fn.getMaxLocals();
-        int maxstack = jynx.printInsts(fn.getInsts(), fn.getFieldName());
+        int maxstack = printInsts(fn.getInsts(), fn.getFieldName());
         pw.format(".limit locals %d%n",localmax);
             // + 2 to allow use of one temp variable when generating jynx which may be double or long
         pw.format(".limit stack %d%n",maxstack);
@@ -399,12 +408,12 @@ public class JynxFunction {
                 break;
             case GLOBAL_GET:
             case GLOBAL_SET:
-                name = JynxModule.javaLocalName(((Global)obj));
+                name = javaName.localName(((Global)obj));
                 pw.format("%s  %s%s %s ; %s%n",spacer,varvt.getPrefix(),opcode,name,comment);
                 break;
             case CALL:
                 WasmFunction called = (WasmFunction)obj;
-                name = JynxModule.javaLocalName(called);
+                name = javaName.localName(called);
                 pw.format("%s  %s %s%s ; %s%n",spacer,opcode, name, fntype.wasmString(),comment);
                 break;
             case CALL_INDIRECT:

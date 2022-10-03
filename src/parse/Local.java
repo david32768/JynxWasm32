@@ -65,10 +65,10 @@ public class Local {
 Each local entry declares a number of local variables of a given type.
 It is legal to have several entries with the same type.
 
-| Field | Type | Description |
-| ----- | ---- | ----------- |
-| count | `varuint32` | number of local variables of the following type |
-| type | `value_type` | type of the variables |
+| Field | Type         | Description                                     |
+| ----- | ------------ | ----------------------------------------------- |
+| count | `varuint32`  | number of local variables of the following type |
+| type  | `value_type` | type of the variables                           |
 
     */    
     

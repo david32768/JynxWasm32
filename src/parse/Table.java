@@ -65,15 +65,15 @@ public class Table implements Kind {
 
 The encoding of a [Table section](Modules.md#table-section):
 
-| Field | Type | Description |
-| ----- |  ----- | ----- |
-| count | `varuint32` | indicating the number of tables defined by the module |
-| entries | `table_type*` | repeated `table_type` entries as described below |
+| Field   | Type          | Description                                           |
+| ------- |  ------------ | ----------------------------------------------------- |
+| count   | `varuint32`   | indicating the number of tables defined by the module |
+| entries | `table_type*` | repeated `table_type` entries as described below      |
 
-| Field | Type | Description |
-| ----- | ---- | ----------- |
-| element_type | `varuint7` | `0x20`, indicating [`anyfunc`](Semantics.md#table) |
-| | `resizable_limits` | see [above](#resizable_limits) |
+| Field        | Type               | Description                                        |
+| ------------ | ------------------ | -------------------------------------------------- |
+| element_type | `varuint7`         | `0x20`, indicating [`anyfunc`](Semantics.md#table) |
+|              | `resizable_limits` | see [above](#resizable_limits)                     |
 
 In the MVP, the number of tables must be no more than 1.
     */
@@ -89,18 +89,14 @@ In the MVP, the number of tables must be no more than 1.
         Logger.getGlobal().fine(String.format("number of tables = %d", count));
     }
 
-    /*
-    or, if the `kind` is `Table`:
-
-| Field | Type | Description |
-| ----- | ---- | ----------- |
-| element_type | `varuint7` | `0x20`, indicating [`anyfunc`](Semantics.md#table) |
-| | `resizable_limits` | see [above](#resizable_limits) |
-
-
-    */
     
     public static Table parseKind(Section section, KindName kn)  {
+        /*
+            | Field        | Type               | Description                                        |
+            | ------------ | ------------------ | -------------------------------------------------- |
+            | element_type | `varuint7`         | `0x20`, indicating [`anyfunc`](Semantics.md#table) |
+            |              | `resizable_limits` | see (#resizable_limits)                     |
+        */
         section.expectWasmType(WasmType.FuncRef);
         return new Table(Limits.parse(section),kn);
     }

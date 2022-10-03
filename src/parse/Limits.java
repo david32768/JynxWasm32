@@ -7,11 +7,11 @@ public class Limits {
 A packed tuple that describes the limits of a
 [table](Semantics.md#table) or [memory](Semantics.md#resizing):
 
-| Field | Type | Description |
-| ----- |  ----- | ----- |
-| flags | `varuint32` | bit `0x1` is set if the maximum field is present |
-| initial | `varuint32` | initial length (in units of table elements or wasm pages) |
-| maximum | `varuint32`? | only present if specified by `flags` |
+| Field   | Type         | Description                                               |
+| ------- |  ----------- | --------------------------------------------------------- |
+| flags   | `varuint32`  | bit `0x1` is set if the maximum field is present          |
+| initial | `varuint32`  | initial length (in units of table elements or wasm pages) |
+| maximum | `varuint32`? | only present if specified by `flags`                      |
 
 The "flags" field may later be extended to include a flag for sharing (between
 threads).

@@ -18,8 +18,8 @@ public class WasmModule {
     private final ArrayList<Memory> memories = new ArrayList<>();
     private final ArrayList<Global> globals = new ArrayList<>();
 
+    private WasmFunction startfn;
     private int impfns = 0;
-    private int start = -1;
     private int imptabs = 0;
     private int impmems = 0;
     private int impglobs = 0;
@@ -29,7 +29,7 @@ public class WasmModule {
     }
 
     public String getName() {
-        return name;
+        return modname == null?name:modname;
     }
 
     public int getLastid() {
@@ -53,10 +53,7 @@ public class WasmModule {
     }
 
     public WasmFunction getStart() {
-        if (start < 0) {
-            return null;
-        }
-        return atfuncidx(start);
+        return startfn;
     }
     
     public void setModname(String modname) {
@@ -84,25 +81,34 @@ public class WasmModule {
         }
         if (fn.isImported()) {
             if (!curname.equals(name)) {
-                Logger.getGlobal().fine(String.format("fnnum = %d ignoring renaming of imported function from %s to %s",
+                Logger.getGlobal().fine(String.format("ignoring renaming of imported function (fnnum = %d) from %s to %s",
                         fnnum,curname, name));
             }
         } else {
             if (!curname.equals(name)) {
-                String msg = String.format("fnnum = %d parms = %s renaming local function from %s to %s",
-                        fnnum, fn.getFnType().wasmString(), curname, name);
+                String fnaccess = fn.isPrivate()?"":"non-private ";
+                String msg = String.format("renaming local %sfunction %s (fnnum = %d) from %s to %s",
+                        fnaccess, fn.getFnType().wasmString(),fnnum, curname, name);
                 fn.setName(name);
                 if (fn.isPrivate()) {
                     Logger.getGlobal().fine(msg);
                 } else {
-                    Logger.getGlobal().warning("non-private " + msg);
+                    Logger.getGlobal().warning(msg);
                 }
             }
         }
     }
     
     public void setStart(Section section) {
-        start = ParseMethods.parseStart(section);
+        assert startfn == null;
+        int start = ParseMethods.parseStart(section);
+        if (start >= 0) {
+            startfn = atfuncidx(start);
+            FnType type = startfn.getFnType();
+            if (!type.isRunable()) {
+                Logger.getGlobal().severe(String.format("start function %s is not RUNABLE", startfn));
+            }
+        }
     }
 
     public int getLocalFnIndex(int i) {
@@ -207,13 +213,13 @@ public class WasmModule {
             String msg = String.format("unknown binary version%n version = %d",version);
             throw new IllegalArgumentException(msg);
         }
-        Logger.getGlobal().info(String.format("Version number = %d", version));
+        Logger.getGlobal().fine(String.format("Version number = %d", version));
         WasmModule module = new WasmModule(name);
         while(stream.hasRemaining()) {
             int id = stream.get() & 0xff;
             SectionType type = SectionType.getInstance(id);
             Section section = Section.getInstance(type,stream);
-            Logger.getGlobal().info(String.format("%s(%d) section payload = %d",
+            Logger.getGlobal().fine(String.format("%s(%d) section payload = %d",
                     type,id,section.getPayload_len()));
             module.setLastId(id);
             type.parse(module, section);

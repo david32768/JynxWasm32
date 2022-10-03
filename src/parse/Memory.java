@@ -4,12 +4,6 @@ import java.util.ArrayList;
 import java.util.logging.Logger;
 
 public class Memory implements Kind {
-/*or, if the `kind` is `Memory`:
-
-| Field | Type | Description |
-| ----- | ---- | ----------- |
-| | `resizable_limits` | see [above](#resizable_limits) |
-*/
 
     private final static int PAGE_SIZE = 1 << 16;   // 64K
     private final static int MAX_PAGES = 1 << 10;   // 64M
@@ -64,14 +58,14 @@ ID: `memory`
 
 The encoding of a [Memory section](Modules.md#linear-memory-section):
 
-| Field | Type | Description |
-| ----- |  ----- | ----- |
-| count | `varuint32` | indicating the number of memories defined by the module |
-| entries | `memory_type*` | repeated `memory_type` entries as described below |
+| Field   | Type           | Description                                             |
+| ------- |  ------------- | ------------------------------------------------------- |
+| count   | `varuint32`    | indicating the number of memories defined by the module |
+| entries | `memory_type*` | repeated `memory_type` entries as described below       |
 
-| Field | Type | Description |
-| ----- | ---- | ----------- |
-| | `resizable_limits` | see [above](#resizable_limits) |
+| Field | Type               | Description                    |
+| ----- | ------------------ | ----------- -------------------|
+|       | `resizable_limits` | see [above](#resizable_limits) |
 
 Note that the initial/maximum fields are specified in units of 
 [WebAssembly pages](Semantics.md#linear-memory).

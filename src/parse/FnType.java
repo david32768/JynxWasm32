@@ -52,35 +52,14 @@ public class FnType {
         return stackparms;
     }
 
-    public String jvmString() {
-        StringBuilder sb = new StringBuilder();
-        sb.append('(');
-        for (int i = 1; i < parm.length;i++) {
-            ValueType vt = parm[i];
-            sb.append(vt.getJvmtype());
-        }
-        sb.append(')');
-        sb.append(parm[0].getJvmtype());
-        return sb.toString();
-    }
-
     public String wasmString() {
-        StringBuilder sb = new StringBuilder();
-        sb.append('(');
+        StringJoiner sj = new StringJoiner(",","(",")");
         for (int i = 1; i < parm.length;i++) {
-            if (i > 1) {
-                sb.append(',');
-            }
             ValueType vt = parm[i];
-            sb.append(vt.name());
+            sj.add(vt.toString());
         }
-        sb.append(")->");
-        if (parm[0] == V00) {
-            sb.append("()");
-        } else {
-            sb.append(parm[0].name());
-        }
-        return sb.toString();
+        String ret = parm[0] == V00?"()":parm[0].toString();
+        return String.format("%s->%s",sj,ret);
     }
 
     public int adjustJVMStack() {
@@ -93,13 +72,7 @@ public class FnType {
 
     @Override
     public String toString() {
-        StringJoiner sj = new StringJoiner(",","(",")");
-        for (int i = 1; i < parm.length;i++) {
-            ValueType vt = parm[i];
-            sj.add(vt.toString());
-        }
-        String ret = parm[0] == V00?"":parm[0].toString();
-        return String.format("%s-> %s",sj,ret);
+        return wasmString();
     }
     
     public ValueType getRtype() {
@@ -155,7 +128,13 @@ public class FnType {
     public static FnType consume(ValueType vt) {
         return new FnType(V00,vt);
     }
-
+    
+    private static FnType RUNABLE = new FnType(ValueType.V00,ValueType.V00);
+    
+    public boolean isRunable() {
+        return this.equals(RUNABLE);
+    }
+    
     @Override
     public boolean equals(Object obj) {
         if (obj instanceof FnType) {

@@ -154,6 +154,15 @@ public final class Section {
         return flag == 1;
     }
     
+    public boolean getMutability() {
+        try {
+            return getFlag();
+        } catch (IllegalArgumentException ex) {
+            String msg = String.format("invalid mutability%n%s",ex.getMessage());
+            throw new IllegalArgumentException(msg,ex);
+        }
+    }
+    
     // LEB128 endcoding - 5.2.2
     public int getU32() {
         int result = (int)LEBint(32, false);

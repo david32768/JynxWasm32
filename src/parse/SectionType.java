@@ -52,15 +52,19 @@ public enum SectionType {
     private static void parseCustom(WasmModule module, Section section) {
         String name = section.getName();
         if (name.equals("name")) {
-            Logger.getGlobal().info(String.format("name = %s", name));
+            Logger.getGlobal().fine(String.format("name = %s", name));
             ParseMethods.parseNames(module, section);
             return;
         }
         if (name.equals("dylink")) {
-            Logger.getGlobal().info(String.format("name = %s", name));
+            Logger.getGlobal().fine(String.format("name = %s", name));
             ParseMethods.parseDylink(module, section);
             return;
         }
-        Logger.getGlobal().info(String.format("name = %s; ignored", name));
+        if (name.startsWith(".debug")) {
+            Logger.getGlobal().fine(String.format("name = %s; ignored", name));
+        } else {
+            Logger.getGlobal().info(String.format("name = %s; ignored", name));
+        }
     }
 }

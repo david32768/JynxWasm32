@@ -78,7 +78,7 @@ public class LocalFunction implements WasmFunction {
 
     private static void logUnreachable(String fnname, OpCode opcode) {
         if (opcode == OpCode.UNREACHABLE) {
-            Logger.getGlobal().info(String.format("%s: unreachable instruction (%s) dropped",
+            Logger.getGlobal().fine(String.format("%s: unreachable instruction (%s) dropped",
                 fnname,opcode.name()));
         } else {
             Logger.getGlobal().warning(String.format("%s: unreachable instruction (%s) dropped",
@@ -165,7 +165,7 @@ public class LocalFunction implements WasmFunction {
 
     @Override
     public String toString() {
-        return fntype.toString();
+        return fntype.wasmString();
     }
 
     public int getMaxLocals() {
@@ -200,9 +200,9 @@ The count of function declared in the [function section](#function-section)
 and function bodies defined in this section must be the same and the `i`th
 declaration corresponds to the `i`th function body.
 
-| Field | Type | Description |
-| ----- | ---- | ----------- |
-| count | `varuint32` | count of function bodies to follow |
+| Field  | Type             | Description                                     |
+| ----- -| ---------------- | ----------------------------------------------- |
+| count  | `varuint32`      | count of function bodies to follow              |
 | bodies | `function_body*` | sequence of [Function Bodies](#function-bodies) |
 
     # Function Bodies
@@ -210,13 +210,13 @@ declaration corresponds to the `i`th function body.
 Function bodies consist of a sequence of local variable declarations followed by 
 [bytecode instructions](Semantics.md). Each function body must end with the `end` opcode.
 
-| Field | Type | Description |
-| ----- | ---- | ----------- |
-| body_size | `varuint32` | size of function body to follow, in bytes |
-| local_count | `varuint32` | number of local entries |
-| locals | `local_entry*` | local variables |
-| code | `byte*` | bytecode of the function |
-| end | `byte` | `0x0f`, indicating the end of the body |
+| Field       | Type           | Description                               |
+| ----------- | -------------- | ----------------------------------------- |
+| body_size   | `varuint32`    | size of function body to follow, in bytes |
+| local_count | `varuint32`    | number of local entries                   |
+| locals      | `local_entry*` | local variables                           |
+| code        | `byte*`        | bytecode of the function                  |
+| end         | `byte`         | `0x0f`, indicating the end of the body    |
 
      */
     public static void parse(WasmModule module, Section section) {

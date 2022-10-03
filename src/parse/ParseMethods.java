@@ -50,20 +50,20 @@ public class ParseMethods {
         return types;
     }
     
-/*
-    #### Import entry
-    | Field | Type | Description |
-    | ----- | ---- | ----------- |
-    | module_len | `varuint32` | module string length |
-    | module_str | `bytes` | module string of `module_len` bytes |
-    | field_len | `varuint32` | field name length |
-    | field_str | `bytes` | field name string of `field_len` bytes |
-    | kind | `external_kind` | the kind of definition being imported |
-*/
-
     public static void parseImports(WasmModule module, Section section)  {
         int importct = section.vecsz();
         for (int i = 0; i < importct;i++) {
+            /*
+            #### Import entry
+            | Field      | Type            | Description                            |
+            | ---------- | --------------- | ----------- -------------------------  |
+            | module_len | `varuint32`     | module string length                   |
+            | module_str | `bytes`         | module string of `module_len` bytes    |
+            | field_len  | `varuint32`     | field name length                      |
+            | field_str  | `bytes`         | field name string of `field_len` bytes |
+            | kind       | `external_kind` | the kind of definition being imported  |
+            */
+
             String module_str = section.getName();
             String field_str = section.getName();
             KindType kt = KindType.getInstance(section.getUByte());
@@ -84,14 +84,31 @@ public class ParseMethods {
                     kind = table;
                     break;
                 case Memory:
+                    /* or, if the `kind` is `Memory`:
+
+                    | Field | Type               | Description                    |
+                    | ----- | ------------------ | ------------------------------ |
+                    |       | `resizable_limits` | see (#resizable_limits) |
+                    
+                    */
                     kn = new KindName(kt, module_str, field_str, Status.IMPORTED, module.memidx());
                     Memory memory = new Memory(Limits.parse(section),kn);
                     module.addMemory(memory);
                     kind = memory;
                     break;
                 case Global:
+                    /* or, if the `kind` is `Global`:
+
+                    | Field      | Type         | Description                                              |
+                    | ---------- | ------------ | -------------------------------------------------------- |
+                    | type       | `value_type` | type of the imported global                              |
+                    | mutability | `varuint1`   | `0` if immutable, `1` if mutable; must be `0` in the MVP |
+                    
+                    */
+                    ValueType type = section.getValueType();
+                    boolean mutable = section.getMutability();
                     kn = new KindName(kt, module_str, field_str, Status.IMPORTED, module.globidx());
-                    Global global = new Global(section,kn);
+                    Global global = new Global(type,mutable,kn);
                     module.addGlobal(global);
                     kind = global;
                     break;
@@ -108,10 +125,10 @@ public class ParseMethods {
 The function section _declares_ the signatures of all functions in the
 module (their definitions appear in the [code section](#code-section)).
 
-| Field | Type | Description |
-| ----- | ---- | ----------- |
-| count | `varuint32` | count of signature indices to follow |
-| types | `varuint32*` | sequence of indices into the type section |
+| Field | Type        | Description                               |
+| ----- | ----------- | ----------------------------------------- |
+| count | `varuint32` | count of signature indices to follow      |
+| types | `varuint32*`| sequence of indices into the type section |
 
 */
     
@@ -129,12 +146,12 @@ module (their definitions appear in the [code section](#code-section)).
 
 /*    
 #### Export entry
-| Field | Type | Description |
-| ----- | ---- | ----------- |
-| field_len | `varuint32` | field name string length |
-| field_str | `bytes` | field name string of `field_len` bytes |
-| kind | `external_kind` | the kind of definition being exported |
-| index | `varuint32` | the index into the corresponding [index space](Modules.md) |
+| Field     | Type            | Description                                                |
+| --------- | --------------- | ---------------------------------------------------------- |
+| field_len | `varuint32`     | field name string length                                   |
+| field_str | `bytes`         | field name string of `field_len` bytes                     |
+| kind      | `external_kind` | the kind of definition being exported                      |
+| index     | `varuint32`     | the index into the corresponding [index space](Modules.md) |
 
 For example, if the "kind" is `Function`, then "index" is a 
 [function index](Modules.md#function-index-space). Note that, in the MVP, the
@@ -179,8 +196,8 @@ only valid index value for a memory or table export is 0.
 
 The start section declares the [start function](Modules.md#module-start-function).
 
-| Field | Type | Description |
-| ----- | ---- | ----------- |
+| Field | Type        | Description          |
+| ----- | ----------- | -------------------- |
 | index | `varuint32` | start function index |
 */
     
@@ -206,12 +223,10 @@ The start section declares the [start function](Modules.md#module-start-function
                         String nameidx = namesect.getName();
                         WasmFunction fn = module.atfuncidx(idx);
                         String parms = fn.getFnType().wasmString();
-                        String demangled = rust.Demangle.demangle(nameidx);
-                        nameidx = rust.Demangle.getMethodName(nameidx);
                         Integer used = names.put(nameidx + parms,idx);
                         if (used == null) {
                             module.setName(idx, nameidx);
-                            Logger.getGlobal().fine("; " + demangled);
+                            Logger.getGlobal().fine("; " + nameidx);
                         } else {
                             Logger.getGlobal().fine(String.format("fnnum = %d parms = %s name duplicate of %d %s",
                                     idx, parms,used, nameidx));
@@ -222,7 +237,7 @@ The start section declares the [start function](Modules.md#module-start-function
                 case 0: // module name
                     String modname = namesect.getName();
                     module.setModname(modname);
-                    Logger.getGlobal().fine(String.format("module name = %s", modname));
+                    Logger.getGlobal().warning(String.format("module name = %s", modname));
                     assert !namesect.hasRemaining();
                     break;
                 case 2:
@@ -265,19 +280,19 @@ The start section declares the [start function](Modules.md#module-start-function
 
 The encoding of the [Elements section](Modules.md#elements-section):
 
-| Field | Type | Description |
-| ----- | ---- | ----------- |
-| count | `varuint32` | count of element segments to follow |
+| Field   | Type            | Description                                  |
+| ------- | --------------- | -------------------------------------------- |
+| count   | `varuint32`     | count of element segments to follow          |
 | entries | `elem_segment*` | repeated element segments as described below |
 
 a `elem_segment` is:
 
-| Field | Type | Description |
-| ----- | ---- | ----------- |
-| index | `varuint32` | the [table index](Modules.md#table-index-space) (0 in the MVP) |
-| offset | `init_expr` | an `i32` initializer expression that computes the offset at which to place the elements |
-| num_elem | `varuint32` | number of elements to follow |
-| elems | `varuint32*` | sequence of [function indices](Modules.md#function-index-space) |
+| Field    | Type         | Description                                                                             |
+| ----- ---| ------------ | --------------------------------------------------------------------------------------- |
+| index    | `varuint32`  | the [table index](Modules.md#table-index-space) (0 in the MVP)                          |
+| offset   | `init_expr`  | an `i32` initializer expression that computes the offset at which to place the elements |
+| num_elem | `varuint32`  | number of elements to follow                                                            |
+| elems    | `varuint32*` | sequence of [function indices](Modules.md#function-index-space)                         |
 
 
     */    

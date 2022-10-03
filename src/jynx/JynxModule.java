@@ -4,12 +4,10 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Base64;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
 
 import parse.Data_segment;
 import parse.FnType;
 import parse.Global;
-import parse.Kind;
 
 import parse.Limits;
 import parse.LocalFunction;
@@ -25,32 +23,32 @@ public class JynxModule {
     private final PrintWriter pw;
     private final String moduleName;
     private final String fileName;
+    private final JavaName javaName;
 
-    private JynxModule(WasmModule module, PrintWriter pw, String filename) {
+    private JynxModule(WasmModule module, PrintWriter pw, String filename, String env) {
         this.module = module;
         this.pw = pw;
-        this.moduleName = javaSimpleName(module.getName());
+        this.javaName = new JavaName(env);
+        String name = javaName.compoundName(module.getName());
+        assert name.equals(module.getName());
+        this.moduleName = name;
         this.fileName = filename;
     }
     
     
-    public static void output(WasmModule module, String file) throws IOException {
+    public static void output(WasmModule module, String file, String env) throws IOException {
         try (PrintWriter pw = new PrintWriter(System.out)) {
-            JynxModule jm = new JynxModule(module, pw,file);
+            JynxModule jm = new JynxModule(module, pw,file,env);
             jm.print();
         }
     }
 
     private void print() {
-        pw.format(".version V1_8 GENERATE_LINE_NUMBERS CHECK_METHOD_REFERENCES PREPEND_CLASSNAME%n");
+        pw.format(".version V1_8 GENERATE_LINE_NUMBERS CHECK_REFERENCES%n");
         pw.println(".macrolib wasm32MVP");
         pw.format(".source %s%n",fileName);
         pw.format(".class public %s%n",moduleName);
         pw.format(".super java/lang/Object%n");
-        WasmFunction start = module.getStart();
-        if (start != null) {
-            pw.format("; start function = %s%n",start.getName());
-        }
         pw.println();
         if (module.getTables().size() > 1) {
             throw new UnsupportedOperationException();  // method name for table should include table number
@@ -60,7 +58,7 @@ public class JynxModule {
                 table.getDefaultName());
             if (table.isExported()) {
                 pw.format(".field public final static %s Lwasmrun/Table;%n",
-                    javaSimpleName(table));
+                    javaName.simpleName(table));
             }
         }
         if (module.getMemories().size() > 1) {
@@ -74,7 +72,7 @@ public class JynxModule {
                 memory.getDefaultName());
             if (memory.isExported()) {
                 pw.format(".field public final static %s Lwasmrun/Storage;%n",
-                    javaSimpleName(memory));
+                    javaName.simpleName(memory));
             }
         }
         for (Global global:module.getGlobals()) {
@@ -114,9 +112,15 @@ public class JynxModule {
             if (function instanceof LocalFunction) {
                 LocalFunction localfn = (LocalFunction)function;
                 pw.println();
-                JynxFunction.printJVMInsts(module, localfn, pw);
+                JynxFunction jynx = new JynxFunction(pw,javaName);
+                jynx.printJVMInsts(module, localfn);
             }
             pw.flush();
+        }
+        WasmFunction start = module.getStart();
+        if (start != null) {
+            JynxFunction jynx = new JynxFunction(pw,javaName);
+            jynx.printStart(start);
         }
         pw.flush();
     }
@@ -124,7 +128,7 @@ public class JynxModule {
     private void defineGlobalField(Global global) {
         if (!global.isImported()) {
             assert moduleName.equals(global.getModuleName());
-            String name = javaSimpleName(global);
+            String name = javaName.simpleName(global);
             String access = global.isPrivate()?"private":"public";
             pw.format(".field %s static %s %c ;  = %s%n",
                     access,name,global.getType().getJvmtype(),global.getValue());
@@ -133,9 +137,9 @@ public class JynxModule {
 
     private void initGlobalField(Global global) {
         if (!global.isImported()) {
-            JynxFunction jynx = new JynxFunction(pw);
+            JynxFunction jynx = new JynxFunction(pw,javaName);
             jynx.printInst(global.getConstinst(), "", "");
-            String name = JynxModule.javaSimpleName(global);
+            String name = javaName.simpleName(global);
             pw.format("  %s%s %s%n",global.getType().getPrefix(),OpCode.GLOBAL_SET,name);
         }
     }
@@ -151,16 +155,12 @@ public class JynxModule {
         String type = "MEMORY";
         if (memory.isImported()) {
             pw.print(spacer);
-            String name = javaName(memory);
+            String name = javaName.of(memory);
             pw.format("%s_%s %s%n",type,OpCode.GLOBAL_GET,name);
             pw.print(spacer);
             pw.format("%s_%s %s%n",type,OpCode.GLOBAL_SET,memory.getDefaultName());
             pw.print(spacer);
             pw.format("%s_CHECK %d %d %d%n",type,limits.getInitial(),maximum,num);
-            pw.print(spacer);
-            pw.format("%s%n",OpCode.RETURN);
-            pw.println(".end_method");
-            return;
         } else {
             pw.print(spacer);
             pw.format("%s_NEW %d %d%n",type,limits.getInitial(),maximum);
@@ -186,7 +186,7 @@ public class JynxModule {
         }
         if (memory.isExported()) {
             pw.print(spacer);
-            pw.format("COPY_MEMORY %s %s %n",memory.getDefaultName(),javaSimpleName(memory));
+            pw.format("COPY_MEMORY %s %s %n",memory.getDefaultName(),javaName.simpleName(memory));
         }
         pw.print(spacer);
         pw.format("%s%n",OpCode.RETURN);
@@ -210,7 +210,7 @@ public class JynxModule {
         pw.format(".method private static __init%s()V%n",table.getDefaultName());
         if (table.isImported()) {
             pw.print(spacer);
-            pw.format("COPY_%s %s %s%n",type,javaName(table),table.getDefaultName());
+            pw.format("COPY_%s %s %s%n",type,javaName.of(table),table.getDefaultName());
             pw.print(spacer);
             pw.format("%s%n",OpCode.RETURN);
             pw.println(".end_method");
@@ -238,7 +238,7 @@ public class JynxModule {
                     pw.format("ADD_ENTRY %d .array ; start_index%n",i);
                 }
                 FnType fntype = fn.getFnType();
-                String name = javaLocalName(fn);
+                String name = javaName.localName(fn);
                 String method = String.format("ST:%s%s",name,fntype.wasmString() );
                 pw.print(spacer);
                 pw.print(spacer);
@@ -261,77 +261,11 @@ public class JynxModule {
         pw.format("%s%n",OpCode.DROP);
         if (table.isExported()) {
             pw.print(spacer);
-            pw.format("COPY_%s %s %s %n",type,table.getDefaultName(),javaSimpleName(table));
+            pw.format("COPY_%s %s %s %n",type,table.getDefaultName(),javaName.simpleName(table));
         }
         pw.print(spacer);
         pw.format("%s%n",OpCode.RETURN);
         pw.println(".end_method");
     }
     
-    private static String changeInvalidChar(Integer I) {
-        int i = I;
-        if (Character.isJavaIdentifierPart(i)) {
-            return String.valueOf((char)i);
-        } else if (i == '-') {
-            return "_";
-        } else if (i == '.') {
-            return "$DOT$";
-        } else {
-            return "$" + Integer.toHexString(i) + "$";
-        }
-    }
-    
-    private static String javaSimpleName(String name) {
-        if (!Character.isJavaIdentifierStart(name.codePointAt(0))) {
-            name = "_"+ name;
-        }
-        return name
-                .codePoints()
-                .boxed()
-                .map(JynxModule::changeInvalidChar)
-                .collect(Collectors.joining());
-    }
-
-    private static String addPackage(String pkg, String name) {
-        assert name.startsWith(pkg);
-        return pkg + "/" + name.substring(0,1).toUpperCase() + name.substring(1);
-    }
-    
-    private static String javaOwnerName(Kind kind) {
-        String name = kind.getModuleName();
-        String[] parts = name.split("/");
-        StringBuilder sb = new StringBuilder(name.length());
-        boolean first = true;
-        for (String part:parts) {
-            if (first) {
-                first = false;
-            } else {
-                sb.append("/");
-            }
-            sb.append(javaSimpleName(part));
-        }
-        return sb.toString();
-    }
-    
-    public static String javaName(Kind kind) {
-        String module = javaOwnerName(kind);
-        String field = javaSimpleName(kind.getFieldName());
-        String name = module + "/" + field;
-        if (module.indexOf('/') < 0  && module.startsWith("wasi")) {
-            name = addPackage("wasi",name);
-        }
-        return name;
-    }
-
-    public static String javaSimpleName(Kind kind) {
-        return javaSimpleName(kind.getFieldName());
-    }
-    
-    public static String javaLocalName(Kind kind) {
-        if (kind.isImported()) {
-            return javaName(kind);
-        } else {
-            return javaSimpleName(kind);
-        }
-    }
 }
