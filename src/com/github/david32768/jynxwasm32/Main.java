@@ -4,26 +4,36 @@ import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Optional;
+import java.util.logging.ConsoleHandler;
+import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import jynx.JavaName;
-
-import jynx.JynxModule;
+import java.util.logging.SimpleFormatter;
+import jynxwasm32.JavaName;
+import jynxwasm32.JynxModule;
 import parse.WasmModule;
+import util.BasicFormatter;
 
 public class Main {
 
     private static void usage() {
-        System.err.println("Usage: [level=log-level] [env=main-java-class] [name=class-name] wasm-file");
-                String file;
-        System.err.println("  default log-level is INFO");
-        System.err.println("  default env is 'Env'");
-        System.err.println("  default class name is filename without the .wasm extension");
+        System.err.println("Usage: [--debug] [--non_standard] [--comment] [--name class-name] wasm-file");
+        System.err.println("  --debug changes log-level to FINEST");
+        System.err.println("  --non_standard stops changing first character of class name to upper case");
+        System.err.println("  --comment add comments to Jynx output");
+        System.err.println("  --name default class name is module-name else filename without the .wasm extension");
         System.exit(1);
     }
     
     public static void main(String[] args) throws Exception {
-        if (args.length <1 || args.length > 3) {
+        Logger root = Logger.getGlobal();
+        root.setUseParentHandlers(false);
+        Handler ha = new ConsoleHandler();
+        ha.setFormatter(new BasicFormatter());
+        root.addHandler(ha);
+
+        if (args.length < 1) {
             usage();
             return;
         }
@@ -36,53 +46,50 @@ public class Main {
         }
 
         Path path = Paths.get(file);
-        String name = path.getFileName().toString();
-        name = name.substring(0, name.length() - 5);
+        String fname = path.getFileName().toString();
+        fname = fname.substring(0, fname.length() - 5);
 
-        String env = "Env";
+        JavaName javaname = new JavaName(true);
+        boolean comments = false;
+        Optional<String> name = Optional.empty();
         for(int i = 0; i < args.length - 1; ++i) {
-            String arg = args[i];
-            int index = arg.indexOf('=');
-            if (index < 0) {
-                System.err.format("'%s' does not contain '='%n", arg);
-                usage();
-                return;
-            }
-            String option = arg.substring(0,index);
-            String parm = arg.substring(index +1);
-            switch(option) {
-                case "level":
-                    try {
-                        Level level = Level.parse(parm.toUpperCase());
-                        Logger.getGlobal().setLevel(level);
-                    } catch (IllegalArgumentException ex) {
-                        System.err.println(ex.getMessage());
-                        usage();
-                        return;
-                    }
+            String argi = args[i];
+            switch(argi) {
+                case "--debug":
+                    ha.setLevel(Level.FINEST);
+                    ha.setFormatter(new SimpleFormatter());
+                    root.setLevel(Level.FINEST);
                     break;
-                case "env":
-                    env = parm;
+                case "--non_standard":
+                    javaname = new JavaName(false);
                     break;
-                case "name":
-                    if (!JavaName.is(parm)) {
-                        System.err.format("%s is not a valid Java class name%n", parm);
-                        usage();
-                        return;
+                case "--comment":
+                    comments = true;
+                    break;
+                case "--name":
+                    if (i < args.length - 2) {
+                        ++i;
+                        name = Optional.of(args[i]);
                     }
-                    name = parm;
                     break;
                 default:
-                    System.err.format("unknown option '%s'%n",option);
+                    System.err.format("unknown option '%s'%n",argi);
                     usage();
                     return;
             }
         }
 
-        ByteBuffer stream = ByteBuffer.wrap(Files.readAllBytes(path));
-        WasmModule module = WasmModule.getModule(name,stream);
+        if (name.isPresent() && !javaname.is(name.get())) {
+            System.err.format("%s is not a valid Java class name%n", name.get());
+            usage();
+            return;
+        }
 
-        JynxModule.output(module,file,env);
+        ByteBuffer stream = ByteBuffer.wrap(Files.readAllBytes(path));
+        WasmModule module = WasmModule.getModule(fname,stream);
+        String classname = name.orElse(javaname.ownerName(module.getName()));
+
+        JynxModule.output(module,file,classname,javaname,comments);
 
     }
     

@@ -1,5 +1,6 @@
 package wasm;
 
+import java.util.logging.Logger;
 import static parse.ValueType.I32;
 import static parse.ValueType.V00;
 
@@ -19,10 +20,10 @@ public class MemoryInstruction extends SimpleInstruction {
         super(opcode, fntype,level);
         this.memtype = memtype;
         this.offset = offset;
-        int membytes = memtype.bitlength()/8;
-        if ((1 << alignment) > membytes) {
-            String msg = String.format("alignment hint = %d membytes = %d",alignment,membytes);
-            throw new IllegalArgumentException(msg);
+        if (alignment > memtype.alignment() || alignment < 0) {
+            String msg = String.format("alignment hint = %d is invalid changed to %d",alignment,memtype.alignment());
+            Logger.getGlobal().info(msg);
+            alignment = memtype.alignment();
         }
         this.alignment = alignment;
     }

@@ -62,14 +62,6 @@ public class FnType {
         return String.format("%s->%s",sj,ret);
     }
 
-    public int adjustJVMStack() {
-        int adjust = getRtype().getStackSize();
-        for (ValueType parmvt:getStackParm()) {
-            adjust -= parmvt.getStackSize();
-        }
-        return adjust;
-    }
-
     @Override
     public String toString() {
         return wasmString();
@@ -89,20 +81,6 @@ public class FnType {
             return parm[parm.length - 1];
         }
         return V00;
-    }
-
-    public FnType changeType(ValueType from, ValueType to) {
-        ValueType[] newparm = new ValueType[parm.length];
-        for (int i = 0; i < parm.length; ++i) {
-           newparm[i] = parm[i] == from?to:parm[i];
-        }
-        return new FnType(newparm);
-    }
-    
-    public FnType changeRType(ValueType vt) {
-        ValueType[] newparm = parm.clone();
-        newparm[0] = vt;
-        return new FnType(newparm);
     }
 
     public static FnType binary(ValueType vt) {

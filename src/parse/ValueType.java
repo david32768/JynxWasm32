@@ -22,6 +22,9 @@ public enum ValueType {
     private final Class primitive;
     private final Class boxed;
     private final boolean unsigned;
+    private final int bitlength;
+    private final int bytelength;
+    private final int alignment;
 
     private ValueType(char jvmtype, char jvminst, Class primitive, Class boxed) {
         this.jvmtype = jvmtype;
@@ -29,46 +32,21 @@ public enum ValueType {
         this.primitive = primitive;
         this.boxed = boxed;
         this.unsigned = name().startsWith("U");
+        this.bitlength = Integer.parseInt(name().substring(1, 3));
+        this.bytelength = (bitlength +7)/8;
+        this.alignment = bytelength == 0?0: 32 - Integer.numberOfLeadingZeros(bytelength - 1);
     }
 
     public char getJvmtype() {
         return jvmtype;
     }
 
-    public char getJvminst() {
+    private char getJvminst() {
         return jvminst;
     }
 
     public int getStackSize() {
-        int bitsz = Integer.valueOf(name().substring(1));
-        return bitsz / 32;
-    }
-
-    public String getSizeSuffix() {
-        return getStackSize() == 2?"2":"";
-    }
-
-    public String getPrefix() {
-        if (this == V00) {
-            return "";
-        }
-        return String.format("%s%d_",isFixed()?'I':'F',getStackSize()*32);
-    }
-    
-    public String primitive() {
-        return primitive.getSimpleName();
-    }
-
-    public Class<?> primitiveClass() {
-        return primitive;
-    }
-
-    public String boxed() {
-        return boxed.getSimpleName();
-    }
-
-    public Class<?> boxedClass() {
-        return boxed;
+        return (bytelength + 3)/4;
     }
 
     public boolean isFixed() {
@@ -79,29 +57,18 @@ public enum ValueType {
         return name().charAt(0) == 'U';
     }
 
-    public String promoted() {
-        if (bitlength() > 0 && bitlength() < 32) {
-            return valueOf(name().substring(0, 1) + "32").primitive();
-        }
-        return primitive();
-    }
-
-    public String nameInMethod() {
-        String prefix = unsigned ? "U" : "";
-        String name = primitive();
-        String head = name.substring(0, 1);
-        String tail = name.substring(1);
-        return prefix + head.toUpperCase() + tail;
-    }
-
     public int bitlength() {
-        return Integer.parseInt(name().substring(1, 3));
+        return bitlength;
     }
 
     public int bytelength() {
-        return (bitlength() + 7) / 8;
+        return bytelength;
     }
 
+    public int alignment() {
+        return alignment;
+    }
+    
     public static ValueType getInstance(String token) {
         try {
             return valueOf(token);

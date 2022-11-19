@@ -24,6 +24,8 @@ public class WasmModule {
     private int impmems = 0;
     private int impglobs = 0;
 
+    public final static Logger LOG = Logger.getGlobal();
+    
     private WasmModule(String name) {
         this.name = name;
     }
