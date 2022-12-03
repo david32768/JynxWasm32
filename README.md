@@ -5,9 +5,7 @@
 ## Usage
 
 Usage:
-
   {options} .wasm-file
-  
     (produces a .jx file)
 
 Options are:
