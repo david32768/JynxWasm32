@@ -18,11 +18,12 @@ import util.BasicFormatter;
 public class Main {
 
     private static void usage() {
-        System.err.println("Usage: [--debug] [--non_standard] [--comment] [--name class-name] wasm-file");
-        System.err.println("  --debug changes log-level to FINEST");
-        System.err.println("  --non_standard stops changing first character of class name to upper case");
-        System.err.println("  --comment add comments to Jynx output");
-        System.err.println("  --name default class name is module-name else filename without the .wasm extension");
+        System.err.println("\nUsage: {options} wasm-file\n");
+        System.err.println("Options are:\n");
+        System.err.println("  --DEBUG changes log-level to FINEST");
+        System.err.println("  --NON_STANDARD stops changing first character of class name to upper case");
+        System.err.println("  --COMMENT add wasm ops as comments to Jynx output");
+        System.err.println("  --NAME class_name ; default name is module-name else filename without the .wasm extension");
         System.exit(1);
     }
     
@@ -53,20 +54,20 @@ public class Main {
         boolean comments = false;
         Optional<String> name = Optional.empty();
         for(int i = 0; i < args.length - 1; ++i) {
-            String argi = args[i];
+            String argi = args[i].toUpperCase().replace('_', '-');
             switch(argi) {
-                case "--debug":
+                case "--DEBUG":
                     ha.setLevel(Level.FINEST);
                     ha.setFormatter(new SimpleFormatter());
                     root.setLevel(Level.FINEST);
                     break;
-                case "--non_standard":
+                case "--NON-STANDARD":
                     javaname = new JavaName(false);
                     break;
-                case "--comment":
+                case "--COMMENT":
                     comments = true;
                     break;
-                case "--name":
+                case "--NAME":
                     if (i < args.length - 2) {
                         ++i;
                         name = Optional.of(args[i]);
