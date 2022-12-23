@@ -15,6 +15,7 @@ Options are:
 *	--NON_STANDARD stops changing first character of class name to upper case
 *	--COMMENT add wasm ops as comments to Jynx output
 *	--NAME class_name  ; default is module-name else filename without the .wasm extension
+* --PACKAGE add package name
 
 ## Notice
 
