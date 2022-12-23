@@ -43,7 +43,9 @@ public class MemoryInstruction extends SimpleInstruction {
     @Override
     public String toString() {
         String simple = super.toString();
-        String result = String.format("%s(%s,+%s)",simple,alignment,offset);
+        String o = offset == 0?"":" offset=" + offset;
+        String a = alignment == memtype.alignment()?"":" align=" + alignment;
+        String result = String.format("%s%s%s",simple,o,a);
         return result;
     }
 

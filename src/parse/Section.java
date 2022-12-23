@@ -55,6 +55,10 @@ public final class Section {
     public void position(int newpos) {
         sectionbb.position(newpos);
     }
+
+    public void discardRemaining() {
+        sectionbb.position(limit);
+    }
     
     public boolean hasRemaining() {
         return sectionbb.hasRemaining();

@@ -225,8 +225,7 @@ public enum OpCode {
     F64_REINTERPRET_I64(0xbf, TRANSFORM),
     
     // extensions
-//        EXTENSION(0xfc,EXTEND),   // spec 1.1 ?
-    // optimized comparison operators
+        // optimized comparison operators
     I32_IFEQZ(0x4504, COMPAREIF),
     I32_IFEQ(0x4604, COMPAREIF),
     I32_IFNE(0x4704, COMPAREIF),

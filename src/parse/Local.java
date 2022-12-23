@@ -3,13 +3,15 @@ package parse;
 import java.util.ArrayList;
 import java.util.logging.Logger;
 
-public class Local {
+public class Local implements CanHaveDebugName {
 
     private final ValueType type;
     private final int jvmnum;
     private final int relnum;
     private final boolean parm;
+    
     private Number value;
+    private String name;
     
     private Local(ValueType type, int jvmnum, int relnum, boolean parm) {
         this.type = type;
@@ -31,16 +33,30 @@ public class Local {
         return type;
     }
 
-    public int getRelnum() {
-        return relnum;
+    @Override
+    public void setDebugName(String name) {
+        if (this.name == null) {
+            this.name = name;
+        } else {
+            String msg = String.format("cannot set name to %s as already set to %s",name,this.name);
+            Logger.getGlobal().warning(msg);
+        }
     }
-
+    
+    public String getName() {
+        return name == null?String.valueOf(relnum):name;
+    }
+    
+    public String getDebugName() {
+        return name;
+    }
+    
     public boolean isParm() {
         return parm;
     }
 
-    public int getJvmnum() {
-        return jvmnum;
+    public int getNumber() {
+        return relnum;
     }
 
     public int getNextJvmnum() {
@@ -72,8 +88,9 @@ It is legal to have several entries with the same type.
 
     */    
     
-    public static ArrayList<Local> parse(Section section, FnType fntype) {
+    public static ArrayList<Local> parse(Section section, LocalFunction fn) {
         // parameters are parms 0 ->
+        FnType fntype = fn.getFnType();
         ValueType[] parms = fntype.getParm();
         ArrayList<Local> result = new ArrayList<>();
         int jvmnum = 0;

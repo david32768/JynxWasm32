@@ -31,7 +31,7 @@ public class BranchInstruction extends SimpleInstruction {
     @Override
     public String toString() {
         String simple = super.toString();
-        String result = String.format("%s(%d)",simple,target.getBr2level());
+        String result = String.format("%s %d",simple,target.getBr2level());
         return result;
     }
     

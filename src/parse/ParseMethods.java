@@ -1,7 +1,5 @@
 package parse;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.logging.Logger;
 import static parse.ValueType.V00;
 
@@ -187,7 +185,8 @@ only valid index value for a memory or table export is 0.
                     throw new EnumConstantNotPresentException(kt.getClass(), kt.name());
             }
             kind.exportNames(name, field_str);
-            Logger.getGlobal().fine(String.format("export %s as %s index = %d", field_str, kt,index));
+            String msg = String.format("export %s as %s index = %d", field_str, kt,index);
+            Logger.getGlobal().fine(msg);
         }
     }
 
@@ -207,72 +206,6 @@ The start section declares the [start function](Modules.md#module-start-function
         }
         int index = section.funcidx();
         return index;
-    }
-
-    public static void parseNames(WasmModule module, Section section) {
-        module.setLastId(Integer.MAX_VALUE);
-        while (section.hasRemaining()) {
-            int id = section.getUByte();
-            Section namesect = Section.getSubSection(section);
-            switch(id) {
-                case 1: // function map (idx name)
-                    Map<String,Integer> names = new HashMap<>();
-                    int count = namesect.vecsz();
-                    for (int i = 0; i < count;++i) {
-                        int idx = namesect.funcidx();
-                        String nameidx = namesect.getName();
-                        WasmFunction fn = module.atfuncidx(idx);
-                        String parms = fn.getFnType().wasmString();
-                        Integer used = names.put(nameidx + parms,idx);
-                        if (used == null) {
-                            module.setName(idx, nameidx);
-                            Logger.getGlobal().fine("; " + nameidx);
-                        } else {
-                            Logger.getGlobal().fine(String.format("fnnum = %d parms = %s name duplicate of %d %s",
-                                    idx, parms,used, nameidx));
-                        }
-                    }
-                    assert !namesect.hasRemaining();
-                    break;
-                case 0: // module name
-                    String modname = namesect.getName();
-                    module.setModname(modname);
-                    Logger.getGlobal().warning(String.format("module name = %s", modname));
-                    assert !namesect.hasRemaining();
-                    break;
-                case 2:
-                    int fncount = namesect.vecsz();
-                    for (int i = 0; i < fncount;++i) {
-                        int fnidx = namesect.funcidx();
-                        int localcount = namesect.vecsz();
-                        for (int j = 0; j < localcount;++j) {
-                            int localidx = namesect.localidx();
-                            String localname = namesect.getName();
-                            Logger.getGlobal().fine(
-                                    String.format("fnidx = %d localidx = %d name = %s", fnidx, localidx, localname));
-                        }
-                    }
-                    Logger.getGlobal().warning(String.format("local names not supported"));
-                    assert !namesect.hasRemaining();
-                    break;
-                default:
-                    int len = namesect.getPayload_len();
-                    StringBuilder sb = new StringBuilder(len);
-                    while(namesect.hasRemaining()) {
-                        int b = namesect.getUByte();
-                        if (sb.length() > 60) {
-                            continue;
-                        }
-                        if (b >=0x20 && b < 0x7f) {
-                            sb.append((char)b);
-                        } else {
-                            sb.append('.');
-                        }
-                    }
-                    Logger.getGlobal().warning(String.format("unknown id - %d: subsection (length %d) ignored%n%s",
-                            id, namesect.getPayload_len(),sb.toString()));
-            }
-        }
     }
 
 /*
@@ -301,15 +234,17 @@ a `elem_segment` is:
         for (int i = 0; i < count ; i++) {
             int index = section.tableidx();
             Table table = module.attableidx(index);
-            int offset = Expression.parseConstant(module, section).intValue();
+            ConstantExpression constexpr = ConstantExpression.parseConstantExpression(module, section);
             int num_elem = section.vecsz();
             WasmFunction[] functions = new WasmFunction[num_elem];
             for (int j = 0; j < num_elem;j++) {
                 int function_index = section.funcidx();
                 functions[j] = module.atfuncidx(function_index);
             }
-            table.addElement(offset,functions);
-            Logger.getGlobal().fine(String.format("%s element offset = %d length = %d",table,offset,functions.length));
+            TableElement element = new TableElement(constexpr, functions);
+            table.addElement(element);
+            Logger.getGlobal().fine(String.format("%s element offset = %s length = %d",
+                    table,constexpr.getConstantString(),functions.length));
         }
     }
 

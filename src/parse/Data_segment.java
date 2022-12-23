@@ -3,23 +3,24 @@ package parse;
 import java.nio.ByteBuffer;
 import java.util.logging.Logger;
 import util.HexDump;
+import wasm.Instruction;
 
 public class Data_segment {
     
-    private final int offset;
+    private final ConstantExpression constexpr;
     private final byte[] data;
 
-    public Data_segment(int offset, byte[] data) {
-        this.offset = offset;
+    public Data_segment(ConstantExpression constexpr, byte[] data) {
+        this.constexpr = constexpr;
         this.data = data;
     }
-    
+
     public byte[] getData() {
         return data;
     }
     
-    public int getOffset() {
-        return offset;
+    public Instruction getOffsetInstruction() {
+        return constexpr.getConstInst();
     }
     
     public static void parse(WasmModule module, Section section)  {
@@ -37,12 +38,13 @@ public class Data_segment {
 
             */    
             int index = section.memidx();
-            int offset =  Expression.parseConstant(module,section).intValue();
+            ConstantExpression constexpr =  ConstantExpression.parseConstantExpression(module,section);
             Memory memory = module.atmemidx(index);
             int size = section.vecsz();
             byte[] data = section.byteArray(size);
-            Data_segment ds = new Data_segment(offset, data);
-            Logger.getGlobal().fine(String.format("data %d size = %d offset = %d",i, data.length, offset));
+            Data_segment ds = new Data_segment(constexpr, data);
+            Logger.getGlobal().fine(String.format("data %d size = %d offset = %s",
+                    i, data.length, constexpr.getConstantString()));
             Logger.getGlobal().finest(()->HexDump.printHex(ByteBuffer.wrap(data), 0));
             memory.add(ds);
         }

@@ -49,4 +49,8 @@ public enum OpType {
     public Op getOp(OpCode opcode,Section section) {
         return getOp.apply(opcode, section);
     }
+    
+    public boolean isCompound() {
+        return getInst == null;
+    }
 }

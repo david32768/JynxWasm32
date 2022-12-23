@@ -71,7 +71,7 @@ public class JynxFunction {
         pw.format("  %s%n",OpCode.RETURN);
         pw.println(".end_method");
     }
-    
+
     public void printJVMInsts(WasmModule module, LocalFunction fn) {
         String jvmname = javaName.simpleName(fn);
         String from = fn.getFieldName().equals(jvmname)?"":" ; " + fn.getFieldName();
@@ -79,6 +79,10 @@ public class JynxFunction {
         pw.format(".method %s static %s%s%s%n",access,jvmname,fn.getFnType().wasmString(),from);
         for (Local local:fn.getLocals()) {
             if (local.isParm()) {
+                String name = local.getDebugName();
+                if (name != null) {
+                    pw.format(".parameter %d %s%n",local.getNumber(),name);
+                }
                 continue;
             }
             OpCode opcode;
@@ -99,7 +103,7 @@ public class JynxFunction {
                     throw new AssertionError();
             }
            pw.format("  %s 0%n",opcode);
-           pw.format("  %s %d%n",OpCode.LOCAL_SET,local.getRelnum());
+           pw.format("  %s %s%n",OpCode.LOCAL_SET,local.getName());
         }
         int localmax = fn.getMaxLocals();
         int maxstack = printInsts(fn.getInsts(), fn.getFieldName());
@@ -212,9 +216,10 @@ public class JynxFunction {
     }
     
     public void printInst(Instruction inst, String spacer,String stackchange) {
-        String comment = comments?String.format(" ; %s, %s", inst,stackchange):"";
         OpCode opcode = inst.getOpCode();
         OpType optype = opcode.getOpType();
+        String compound = optype.isCompound()?"(*)":"";
+        String comment = comments?String.format(" ; %s%s ; %s",compound, inst,stackchange):"";
         switch(optype) {
             case VARIABLE:
                 variable(spacer, inst, comment);
@@ -431,8 +436,8 @@ public class JynxFunction {
             case LOCAL_SET:
             case LOCAL_TEE:
                 local = (Local)obj;
-                pw.format("%s  %s %d%s%n",
-                        spacer,opcode,local.getRelnum(),comment);
+                pw.format("%s  %s %s%s%n",
+                        spacer,opcode,local.getName(),comment);
                 break;
             case GLOBAL_GET:
             case GLOBAL_SET:

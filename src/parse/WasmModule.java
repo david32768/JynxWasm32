@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.logging.Logger;
 
 public class WasmModule {
@@ -74,33 +75,6 @@ public class WasmModule {
         imptabs = tables.size();
     }
 
-    public void setName(int fnnum,String name) {
-        WasmFunction fn = functions.get(fnnum);
-        String curname = fn.getName();
-        int index = curname.indexOf('/');
-        if (index >= 0) {
-            curname = curname.substring(index + 1);
-        }
-        if (fn.isImported()) {
-            if (!curname.equals(name)) {
-                Logger.getGlobal().fine(String.format("ignoring renaming of imported function (fnnum = %d) from %s to %s",
-                        fnnum,curname, name));
-            }
-        } else {
-            if (!curname.equals(name)) {
-                String fnaccess = fn.isPrivate()?"":"non-private ";
-                String msg = String.format("renaming local %sfunction %s (fnnum = %d) from %s to %s",
-                        fnaccess, fn.getFnType().wasmString(),fnnum, curname, name);
-                fn.setName(name);
-                if (fn.isPrivate()) {
-                    Logger.getGlobal().fine(msg);
-                } else {
-                    Logger.getGlobal().warning(msg);
-                }
-            }
-        }
-    }
-    
     public void setStart(Section section) {
         assert startfn == null;
         int start = ParseMethods.parseStart(section);

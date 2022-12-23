@@ -10,6 +10,7 @@ import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
+import java.util.stream.Stream;
 import jynxwasm32.JavaName;
 import jynxwasm32.JynxModule;
 import parse.WasmModule;
@@ -17,13 +18,32 @@ import util.BasicFormatter;
 
 public class Main {
 
+    private enum Option {
+        DEBUG("changes log-level to FINEST"),
+        NON_STANDARD("stops changing first character of class name to upper case"),
+        COMMENT("add wasm ops as comments to Jynx output"),
+        NAME("class_name ; default name is module-name else filename without the .wasm extension"),
+        PACKAGE("add package name"),
+        ;
+         private final String msg;
+
+        private Option(String msg) {
+            this.msg = msg;
+        }
+
+        private static Optional<Option> getInstance(String arg) {
+            return Stream.of(values())
+                    .filter(opt -> arg.equals("--" + opt.name()))
+                    .findAny();
+        }
+    }
+    
     private static void usage() {
         System.err.println("\nUsage: {options} wasm-file\n");
         System.err.println("Options are:\n");
-        System.err.println("  --DEBUG changes log-level to FINEST");
-        System.err.println("  --NON_STANDARD stops changing first character of class name to upper case");
-        System.err.println("  --COMMENT add wasm ops as comments to Jynx output");
-        System.err.println("  --NAME class_name ; default name is module-name else filename without the .wasm extension");
+        for (Option opt: Option.values()) {
+            System.err.format("--%s %s%n", opt,opt.msg);
+        }
         System.exit(1);
     }
     
@@ -53,24 +73,36 @@ public class Main {
         JavaName javaname = new JavaName(true);
         boolean comments = false;
         Optional<String> name = Optional.empty();
+        String pkg = null;
         for(int i = 0; i < args.length - 1; ++i) {
             String argi = args[i].toUpperCase().replace('_', '-');
-            switch(argi) {
-                case "--DEBUG":
+            Optional<Option> opt = Option.getInstance(argi);
+            if (!opt.isPresent()) {
+                usage();
+                System.exit(1);
+            }
+            switch(opt.get()) {
+                case DEBUG:
                     ha.setLevel(Level.FINEST);
                     ha.setFormatter(new SimpleFormatter());
                     root.setLevel(Level.FINEST);
                     break;
-                case "--NON-STANDARD":
+                case NON_STANDARD:
                     javaname = new JavaName(false);
                     break;
-                case "--COMMENT":
+                case COMMENT:
                     comments = true;
                     break;
-                case "--NAME":
+                case NAME:
                     if (i < args.length - 2) {
                         ++i;
                         name = Optional.of(args[i]);
+                    }
+                    break;
+                case PACKAGE:
+                    if (i < args.length - 2) {
+                        ++i;
+                        pkg = args[i];
                     }
                     break;
                 default:
@@ -80,8 +112,14 @@ public class Main {
             }
         }
 
-        if (name.isPresent() && !javaname.is(name.get())) {
+        if (name.isPresent() && !javaname.isClassName(name.get())) {
             System.err.format("%s is not a valid Java class name%n", name.get());
+            usage();
+            return;
+        }
+
+        if (pkg != null && !javaname.isPackageName(pkg)) {
+            System.err.format("%s is not a valid Java package name%n", pkg);
             usage();
             return;
         }
@@ -89,7 +127,9 @@ public class Main {
         ByteBuffer stream = ByteBuffer.wrap(Files.readAllBytes(path));
         WasmModule module = WasmModule.getModule(fname,stream);
         String classname = name.orElse(javaname.ownerName(module.getName()));
-
+        if (pkg != null) {
+            classname = pkg + '/' + classname;
+        }
         JynxModule.output(module,file,classname,javaname,comments);
 
     }

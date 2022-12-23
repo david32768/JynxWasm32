@@ -28,7 +28,8 @@ public class ControlInstruction extends SimpleInstruction {
     @Override
     public String toString() {
         String simple = super.toString();
-        String result = String.format("%s(%s)",simple,blocktype);
+        String type = blocktype == V00?"":" (" + blocktype.toString() +")";
+        String result = String.format("%s%s",simple,type);
         return result;
     }
     

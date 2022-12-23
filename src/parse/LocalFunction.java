@@ -12,12 +12,13 @@ import wasm.UnreachableInstruction;
 
 public class LocalFunction implements WasmFunction {
 
-    private ArrayList<Local> locals;
     private ArrayList<Instruction> insts;
     private final FnType fntype;
+
+    private Local[] locals;
     private KindName kindName;
     private boolean found;
-    
+
     public LocalFunction(FnType fntype, KindName kindName) {        // PlaceHolder
         this.fntype = fntype;
         this.kindName = kindName;
@@ -33,8 +34,8 @@ public class LocalFunction implements WasmFunction {
         return kindName;
     }
 
-    public ArrayList<Local> getLocals() {
-        return locals;
+    public Local[] getLocals() {
+        return locals.clone();
     }
 
     @Override
@@ -44,7 +45,7 @@ public class LocalFunction implements WasmFunction {
 
     private void setLocalFunction(int fnnum, ArrayList<Local> locals,
             ArrayList<Instruction> insts, FnType fntype) { //, int maxstacksz) {
-        this.locals = locals;
+        this.locals = locals.toArray(new Local[0]);
         this.insts = insts;
         if (fnnum != kindName.getNumber()) {
             String msg = String.format("set fnnum %d is different from original %d",fnnum,kindName.getNumber());
@@ -57,8 +58,9 @@ public class LocalFunction implements WasmFunction {
         this.found = true;
     }
 
+    @Override
     public Local getLocal(int index) {
-        return locals.get(index);
+        return locals[index];
     }
 
     @Override
@@ -169,8 +171,8 @@ public class LocalFunction implements WasmFunction {
     }
 
     public int getMaxLocals() {
-        int localmax = locals.isEmpty()?0
-                :locals.get(locals.size() - 1).getNextJvmnum();// .getJvmnum() + 2; // in case last local was double or long;
+        int localmax = locals.length == 0?0
+                :locals[locals.length - 1].getNextJvmnum();// .getJvmnum() + 2; // in case last local was double or long;
         return localmax;
     }
     
@@ -233,7 +235,7 @@ Function bodies consist of a sequence of local variable declarations followed by
             Logger.getGlobal().fine(String.format("Function %d %s", fnnum,localfn.getName()));
             Section code = Section.getSubSection(section);
             FnType fnsig = localfn.getFnType(); //module.getSignature(i);
-            ArrayList<Local> locals = Local.parse(code, fnsig);
+            ArrayList<Local> locals = Local.parse(code, localfn);
             TypeStack ts = new TypeStack(fnsig, locals,code,module);
             ArrayList<Instruction> insts = getInsts(ts,localfn.getName(),fnsig);
             OpCode lastop = insts.get(insts.size() - 1).getOpCode();

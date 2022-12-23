@@ -53,7 +53,7 @@ public enum SectionType {
         String name = section.getName();
         if (name.equals("name")) {
             Logger.getGlobal().fine(String.format("name = %s", name));
-            ParseMethods.parseNames(module, section);
+            DebugNameType.parseNames(module, section);
             return;
         }
         if (name.equals("dylink")) {

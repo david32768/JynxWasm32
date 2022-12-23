@@ -1,23 +1,23 @@
 package parse;
 
-import java.util.LinkedHashSet;
-import java.util.Set;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Logger;
 
 
 public class Table implements Kind {
 
     private final Limits limits;
-    private final WasmFunction[] elements;
-    private final Set<FnType> fntypes;
+    private final WasmFunction[] functions;
+    private final List<TableElement> elements;
 
     private KindName kindName;
     
     public Table(Limits limits,KindName kindName) {
         this.limits = limits;
-        this.elements = new WasmFunction[limits.getInitial()];
-        this.fntypes = new LinkedHashSet<>();
+        this.functions = new WasmFunction[limits.getInitial()];
         this.kindName = kindName;
+        this.elements = new ArrayList<>();
     }
 
     @Override
@@ -34,26 +34,32 @@ public class Table implements Kind {
         return kindName.getNumber();
     }
 
-    public WasmFunction[] getElements() {
+    public List<TableElement> getElements() {
         return elements;
     }
     
-    public void addElement(int offset, WasmFunction[] functions) {
+    private void addElement(ConstantExpression constexpr, WasmFunction[] functions) {
+        int offset = constexpr.evalConstant().intValue();
         for (int i = 0; i < functions.length;++i) {
             int elementnum = i + offset;
-            WasmFunction shouldBeNull = elements[elementnum];
+            WasmFunction shouldBeNull = this.functions[elementnum];
             WasmFunction toBeAdded = functions[i];
             if (shouldBeNull != null && shouldBeNull != toBeAdded) {
                 String message = String.format("Table element %d already defined%n %s would be replaced by %s%n",
                         elementnum,shouldBeNull.getName(),toBeAdded.getName());
                 throw new IllegalStateException(message);
             }
-            elements[elementnum] = toBeAdded;
-            fntypes.add(toBeAdded.getFnType());
+            this.functions[elementnum] = toBeAdded;
         }
-        Logger.getGlobal().fine(String.format("fntypes size = %d", fntypes.size()));
     }
 
+    public void addElement(TableElement element) {
+        elements.add(element);
+        if (!element.getConstExpr().usesGlobal()) {
+            addElement(element.getConstExpr(),element.getFunctions());
+        }
+    }
+    
     @Override
     public String toString() {
         return String.format("Table %s %s %s", 

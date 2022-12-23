@@ -33,7 +33,7 @@ public class ObjectInstruction extends SimpleInstruction {
     @Override
     public String toString() {
         String simple = super.toString();
-        String result = String.format("%s(%s)",simple,imm);
+        String result = String.format("%s %s",simple,imm);
         return result;
     }
     

@@ -6,20 +6,18 @@ import wasm.Instruction;
 public class Global implements Kind {
     private final ValueType type;
     private final boolean mutable;
-    private final Instruction constinst;
+    private final ConstantExpression constexpr;
 
-    private final Number value;
     private KindName kindName;
     
     public Global(ValueType type, boolean mutable, KindName kindName)  {
-        this(type, mutable, null, 0, kindName);
+        this(type, mutable, null, kindName);
     }
 
-    public Global(ValueType type, boolean mutable, Instruction constinst, Number value, KindName kindName) {
+    public Global(ValueType type, boolean mutable, ConstantExpression constexpr, KindName kindName) {
         this.type = type;
         this.mutable = mutable;
-        this.constinst = constinst;
-        this.value = value;
+        this.constexpr = constexpr;
         this.kindName = kindName;
     }
 
@@ -27,8 +25,12 @@ public class Global implements Kind {
         return type;
     }
 
+    public boolean usesInitGlobal() {
+        return !isImported() && constexpr.usesGlobal();
+    }
+    
     public Number getValue() {
-        return value;
+        return constexpr.evalConstant();
     }
 
     @Override
@@ -38,6 +40,10 @@ public class Global implements Kind {
 
     public boolean isMutable() {
         return mutable;
+    }
+
+    public boolean isFinal() {
+        return !mutable && constexpr != null;
     }
 
     @Override
@@ -55,8 +61,8 @@ public class Global implements Kind {
         return kindName.getFieldName();
     }
 
-    public Instruction getConstinst() {
-        return constinst;
+    public Instruction getConstInst() {
+        return constexpr.getConstInst();
     }
 
     @Override
@@ -91,14 +97,12 @@ public class Global implements Kind {
             | mutability | `varuint1`   | `0` if immutable, `1` if mutable |
             | init       | `init_expr`  | the initial value of the global  |
 
-            Note that, in the MVP, only immutable global variables can be exported.
-
             */
             ValueType type = section.getValueType();
             boolean mutable = section.getMutability();
-            Instruction constinst = Expression.parseInstruction(module, section);
+            ConstantExpression constexpr = ConstantExpression.parseConstantExpression(module, section);
             KindName kn = new KindName(KindType.Global,module.getName(),null,Status.PRIVATE,module.globidx());
-            Global global = new Global(type, mutable,constinst,Expression.evalConstant(constinst),kn);
+            Global global = new Global(type, mutable,constexpr,kn);
             Logger.getGlobal().fine(String.format("global %d = %s",i,global));
             module.addGlobal(global);
         }

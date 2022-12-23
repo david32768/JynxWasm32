@@ -78,7 +78,12 @@ public class JavaName {
         }
     }
     
-    public boolean is(String name) {
+    public boolean isClassName(String name) {
         return ownerName(name).equals(name);
     }
+    
+    public boolean isPackageName(String name) {
+        return simpleName(name).equals(name);
+    }
+
 }

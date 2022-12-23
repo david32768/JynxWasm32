@@ -26,7 +26,7 @@ public class ImmediateInstruction extends SimpleInstruction {
     @Override
     public String toString() {
         String simple = super.toString();
-        String result = String.format("%s(%s)",simple,imm1);
+        String result = String.format("%s %s",simple,imm1);
         return result;
     }
     
