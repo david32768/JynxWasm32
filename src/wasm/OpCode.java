@@ -71,6 +71,8 @@ public enum OpCode {
 
     MEMORY_SIZE(0x3f, MEMFN),
     MEMORY_GROW(0x40, MEMFN),
+    MEMORY_COPY(0xfc000a,MEMFN),
+    MEMORY_FILL(0xfc000b,MEMFN),
     // constants
     I32_CONST(0x41, CONST),
     I64_CONST(0x42, CONST),
@@ -199,6 +201,10 @@ public enum OpCode {
     I32_TRUNC_U_F32(0xa9, TRANSFORM),
     I32_TRUNC_S_F64(0xaa, TRANSFORM),
     I32_TRUNC_U_F64(0xab, TRANSFORM),
+    I32_TRUNC_SAT_S_F32(0xfc0000, TRANSFORM),
+    I32_TRUNC_SAT_U_F32(0xfc0001, TRANSFORM),
+    I32_TRUNC_SAT_S_F64(0xfc0002, TRANSFORM),
+    I32_TRUNC_SAT_U_F64(0xfc0003, TRANSFORM),
 
     I64_EXTEND_S_I32(0xac, TRANSFORM),
     I64_EXTEND_U_I32(0xad, TRANSFORM),
@@ -206,6 +212,10 @@ public enum OpCode {
     I64_TRUNC_U_F32(0xaf, TRANSFORM),
     I64_TRUNC_S_F64(0xb0, TRANSFORM),
     I64_TRUNC_U_F64(0xb1, TRANSFORM),
+    I64_TRUNC_SAT_S_F32(0xfc0004, TRANSFORM),
+    I64_TRUNC_SAT_U_F32(0xfc0005, TRANSFORM),
+    I64_TRUNC_SAT_S_F64(0xfc0006, TRANSFORM),
+    I64_TRUNC_SAT_U_F64(0xfc0007, TRANSFORM),
 
     F32_CONVERT_S_I32(0xb2, TRANSFORM),
     F32_CONVERT_U_I32(0xb3, TRANSFORM),
@@ -223,7 +233,14 @@ public enum OpCode {
     I64_REINTERPRET_F64(0xbd, TRANSFORM),
     F32_REINTERPRET_I32(0xbe, TRANSFORM),
     F64_REINTERPRET_I64(0xbf, TRANSFORM),
-    
+
+    // sign extension 2.0
+    I32_EXTEND8_S(0xc0,UNARY),
+    I32_EXTEND16_S(0xc1,UNARY),
+    I64_EXTEND8_S(0xc2,UNARY),
+    I64_EXTEND16_S(0xc3,UNARY),
+    I64_EXTEND32_S(0xc4,UNARY),
+
     // extensions
         // optimized comparison operators
     I32_IFEQZ(0x4504, COMPAREIF),
@@ -501,8 +518,4 @@ public enum OpCode {
         return opname;
     }
     
-    public boolean isObsolete() {
-        return code == -1;
-    }
-
 }

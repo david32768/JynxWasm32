@@ -28,6 +28,10 @@ public class MemoryInstruction extends SimpleInstruction {
         this.alignment = alignment;
     }
 
+    public int getMemoryNumber() {
+        return 0;
+    }
+    
     public int getOffset() {
         return offset;
     }

@@ -4,13 +4,12 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
-import java.util.Map;
 import java.util.logging.Logger;
 
 public class WasmModule {
 
     private final String name;
-    private int lastid = 0;
+    private SectionType lastSection = SectionType.st_custom;
     private FnType[] types = new FnType[0];
     private String modname; // set by section 0 name subsection 0
 
@@ -25,6 +24,8 @@ public class WasmModule {
     private int impmems = 0;
     private int impglobs = 0;
 
+    private Integer datacount;
+    
     public final static Logger LOG = Logger.getGlobal();
     
     private WasmModule(String name) {
@@ -35,8 +36,8 @@ public class WasmModule {
         return modname == null?name:modname;
     }
 
-    public int getLastid() {
-        return lastid;
+    public SectionType getLastSection() {
+        return lastSection;
     }
 
     public ArrayList<WasmFunction> getFunctions() {
@@ -158,12 +159,23 @@ public class WasmModule {
         return tables.size() - 1;
     }
 
-    public void setLastId(int id) {
-        if (id != 0 && id <= lastid) {
-            String message = String.format("sections in  wrong order - last was %d current is %d%n",lastid,id);
-            throw new IllegalStateException(message);
+    public void setDataCount(Integer datacount) {
+        this.datacount = datacount;
+    }
+
+    public Integer getDataCount() {
+        return datacount;
+    }
+
+
+    public void setLastSection(SectionType type) {
+        if (type != SectionType.st_custom) {
+            if (type.compareTo(lastSection) <= 0) {
+                String message = String.format("sections in  wrong order - last was %d current is %d%n",lastSection,type);
+                throw new IllegalStateException(message);
+            }
+            lastSection = type;
         }
-        lastid = id != 0?id:lastid;
     }
     
     // spec 5.5.15
@@ -197,7 +209,7 @@ public class WasmModule {
             Section section = Section.getInstance(type,stream);
             Logger.getGlobal().fine(String.format("%s(%d) section payload = %d",
                     type,id,section.getPayload_len()));
-            module.setLastId(id);
+            module.setLastSection(type);
             type.parse(module, section);
             if (section.hasRemaining() && id != 0) {
                 String msg = String.format("section size mismatch%n in section %s(%d)",type,id);

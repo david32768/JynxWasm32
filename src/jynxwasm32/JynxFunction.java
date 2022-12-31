@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.logging.Logger;
 
 import static parse.ValueType.*;
+import static wasm.OpCode.MEMORY_COPY;
 
 import parse.BranchTarget;
 import parse.FnType;
@@ -240,6 +241,12 @@ public class JynxFunction {
                 brtable(spacer, inst, comment);
                 break;
             case MEMFN:
+                if (opcode == MEMORY_COPY) {
+                    pw.format("%s  %s 0 %s%s%n", spacer,opcode,num2string(inst.getImm1()),comment);
+                } else {
+                    pw.format("%s  %s %s%s%n", spacer,opcode,num2string(inst.getImm1()),comment);
+                }
+                break;
             case CONST:
                 pw.format("%s  %s %s%s%n", spacer,opcode,num2string(inst.getImm1()),comment);
                 break;
@@ -258,8 +265,9 @@ public class JynxFunction {
         MemoryInstruction meminst = (MemoryInstruction)inst;
         int offset = meminst.getOffset();
         int alignment = meminst.getAlignment(); // alignment is a hint not semantic
+        int memnum = meminst.getMemoryNumber();
         String plus = offset >= 0? "+": "";
-        pw.format("%s  %s %s%d%s%n",spacer,inst.getOpCode(),plus,offset,comment);
+        pw.format("%s  %s %d %s%d%s%n",spacer,inst.getOpCode(),memnum,plus,offset,comment);
     }
     
     private void unreachable(String spacer,Instruction inst, String comment) {

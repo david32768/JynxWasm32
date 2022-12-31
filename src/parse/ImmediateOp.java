@@ -1,5 +1,7 @@
 package parse;
 
+import static wasm.OpCode.MEMORY_COPY;
+
 import wasm.OpCode;
 
 public class ImmediateOp implements Op {
@@ -40,6 +42,13 @@ public class ImmediateOp implements Op {
         if (zero != 0) {
             String msg = String.format("zero flag expected%nopcode = %s flag = %d",opcode,zero);
             throw new IllegalArgumentException(msg);
+        }
+        if (opcode == MEMORY_COPY) {
+            zero = section.getUByte();
+            if (zero != 0) {
+                String msg = String.format("zero flag expected%nopcode = %s flag2 = %d",opcode,zero);
+                throw new IllegalArgumentException(msg);
+            }            
         }
         return new ImmediateOp(opcode,zero);
     }

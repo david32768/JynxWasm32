@@ -77,9 +77,19 @@ public final class Section {
     private double getF64() {
         return sectionbb.getDouble();
     }
+
+    private static final int FC_EXTENSION = 0xfc;
     
     private OpCode getOpCode() {
         int inst = getUByte();
+        if (inst == FC_EXTENSION) {
+            int extension = getU32(); 
+            if (extension <= 0xffff) {
+                inst = (inst << 16) | extension;
+            } else {
+                
+            }
+        }
         return OpCode.getInstance(inst);
     }
     

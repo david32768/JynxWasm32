@@ -20,7 +20,7 @@ public class Main {
 
     private enum Option {
         DEBUG("changes log-level to FINEST"),
-        NON_STANDARD("stops changing first character of class name to upper case"),
+        CLASS_NAME_AS_IS("stops changing first character of class name to upper case"),
         COMMENT("add wasm ops as comments to Jynx output"),
         NAME("class_name ; default name is module-name else filename without the .wasm extension"),
         PACKAGE("add package name"),
@@ -87,7 +87,7 @@ public class Main {
                     ha.setFormatter(new SimpleFormatter());
                     root.setLevel(Level.FINEST);
                     break;
-                case NON_STANDARD:
+                case CLASS_NAME_AS_IS:
                     javaname = new JavaName(false);
                     break;
                 case COMMENT:

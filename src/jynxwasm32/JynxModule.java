@@ -2,6 +2,8 @@ package jynxwasm32;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Base64;
 import java.util.List;
 import java.util.logging.Logger;
@@ -53,7 +55,8 @@ public class JynxModule {
     private void print() {
         pw.format(".version V1_8 GENERATE_LINE_NUMBERS CHECK_REFERENCES%n");
         pw.println(".macrolib wasm32MVP");
-        pw.format(".source %s%n",fileName);
+        Path srcpath = Paths.get(fileName);
+        pw.format(".source %s%n",srcpath.getFileName());
         pw.format(".class public %s%n",className);
         pw.format(".super java/lang/Object%n");
         pw.println();
@@ -73,7 +76,7 @@ public class JynxModule {
         }
         for (Memory memory: module.getMemories()) {
             if (memory.getMemoryNum() == 0 && !memory.getKindName().getFieldName().equals("memory")) {
-                Logger.getGlobal().warning("memory 0 is not exported as 'memory' so cannot use wasi");
+                Logger.getGlobal().warning("memory 0 is not exported as 'memory' so cannot use wasi methods");
             }
             pw.format(".field private final static %s Lwasmrun/Storage;%n",
                 memory.getDefaultName());
@@ -204,20 +207,20 @@ public class JynxModule {
             assert MAX_SEGMENT > 0;
             while (remaining > MAX_SEGMENT) {
                 System.arraycopy(data, dataoffset, part, 0, MAX_SEGMENT);
-                printDataSegment(jynx,constinst,part,dataoffset);
+                printDataSegment(jynx,num,constinst,part,dataoffset);
                 remaining -= MAX_SEGMENT;
                 dataoffset += MAX_SEGMENT;
             }
             part = new byte[remaining];
             System.arraycopy(data, dataoffset, part, 0, remaining);
-            printDataSegment(jynx,constinst,part,dataoffset);
+            printDataSegment(jynx,num,constinst,part,dataoffset);
         }
         pw.print(spacer);
         pw.format("%s%n",OpCode.RETURN);
         pw.println(".end_method");
     }
 
-    private void printDataSegment(JynxFunction jynx, Instruction constinst, byte[] data, int dataoffset) {
+    private void printDataSegment(JynxFunction jynx, int num, Instruction constinst, byte[] data, int dataoffset) {
         Base64.Encoder encoder = Base64.getEncoder();
         String datastr = encoder.encodeToString(data);
         String spacer = "  ";
@@ -225,7 +228,7 @@ public class JynxModule {
         pw.print(spacer);
         pw.format("STRING_CONST \"%s\"%n", datastr);
         pw.print(spacer);
-        pw.format("BASE64_STORE +%d%n",dataoffset);
+        pw.format("BASE64_STORE %d +%d%n",num,dataoffset);
     }
     
     private static final int MAXPARM = 32;

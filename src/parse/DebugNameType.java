@@ -3,8 +3,6 @@ package parse;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
@@ -13,11 +11,14 @@ import util.HexDump;
 
 public enum DebugNameType {
 
-    // https://github.com/WebAssembly/extended-name-section/blob/main/proposals/extended-name-section/Overview.md
-
+    // Standard
+    
     MODULE(0,NAME),
     FUNCTION(1,NAMEMAP),
     LOCAL(2,INDIRECT),
+
+    // https://github.com/WebAssembly/extended-name-section/blob/main/proposals/extended-name-section/Overview.md
+
     LABEL(3,INDIRECT),
     TYPE(4,NAMEMAP),
     TABLE(5,NAMEMAP),
@@ -71,7 +72,7 @@ public enum DebugNameType {
     }
     
     public static void parseNames(WasmModule module, Section section) {
-        module.setLastId(Integer.MAX_VALUE);
+        module.setLastSection(SectionType.st_end);
         while (section.hasRemaining()) {
             int id = section.getUByte();
             Section namesect = Section.getSubSection(section);

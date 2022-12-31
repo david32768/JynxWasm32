@@ -6,7 +6,7 @@ import static parse.ValueType.V00;
 public class ParseMethods {
     
     public static void parseDylink(WasmModule module, Section section) {
-        if (module.getLastid() != 0) {
+        if (module.getLastSection() != SectionType.st_custom) {
             throw new IllegalStateException();
         }
         int memsz = section.getU32();
@@ -248,4 +248,8 @@ a `elem_segment` is:
         }
     }
 
+    public static void parseDataCount(WasmModule module, Section section) {
+        int count = section.getU32();
+        module.setDataCount(count);
+    }
 }

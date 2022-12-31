@@ -5,6 +5,7 @@ import java.util.logging.Logger;
 
 public enum SectionType {
 
+    // sections must be in this order apart from section 0
     st_custom(0, SectionType::parseCustom),
     st_type(1, WasmModule::setTypes),
     st_import(2, WasmModule::setImports),
@@ -15,8 +16,10 @@ public enum SectionType {
     st_export(7, ParseMethods::parseExports),
     st_start(8, WasmModule::setStart),
     st_element(9, ParseMethods::parseElements),
+    st_datacount(12, ParseMethods::parseDataCount),
     st_code(10, LocalFunction::parse),
     st_data(11, Data_segment::parse),
+    st_end(Integer.MAX_VALUE,null),
     ;
 
     private final int id;

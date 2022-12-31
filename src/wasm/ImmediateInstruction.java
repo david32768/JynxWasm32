@@ -1,6 +1,7 @@
 package wasm;
 
 import static parse.ValueType.I32;
+import static parse.ValueType.V00;
 import static wasm.OpCode.*;
 
 import parse.FnType;
@@ -50,6 +51,10 @@ public class ImmediateInstruction extends SimpleInstruction {
                 break;
             case MEMORY_SIZE:
                 fntype = FnType.produce(I32);
+                break;
+            case MEMORY_COPY:
+            case MEMORY_FILL:
+                fntype = new FnType(V00,I32,I32,I32);
                 break;
             default:
                 throw new AssertionError();

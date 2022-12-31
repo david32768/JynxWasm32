@@ -25,6 +25,12 @@ public class Data_segment {
     
     public static void parse(WasmModule module, Section section)  {
         int count = section.vecsz();
+        Integer sec12ct = module.getDataCount();
+        if (sec12ct != null && sec12ct != count) {
+            String msg = String.format("number of data segments %d is not equal to section 12 count of %d",
+                    count,sec12ct);
+            Logger.getGlobal().severe(msg);
+        }
         for (int i = 0; i < count;i++) {
             /*
             a `data_segment` is:
