@@ -241,10 +241,14 @@ public class JynxFunction {
                 brtable(spacer, inst, comment);
                 break;
             case MEMFN:
+                long mems = inst.getImm1().longValue();
                 if (opcode == MEMORY_COPY) {
-                    pw.format("%s  %s 0 %s%s%n", spacer,opcode,num2string(inst.getImm1()),comment);
+                    int mem1 = (int)(mems >> 32);
+                    int mem2 = (int)mems;
+                    pw.format("%s  %s %d %d%s%n", spacer,opcode,mem1,mem2,comment);
                 } else {
-                    pw.format("%s  %s %s%s%n", spacer,opcode,num2string(inst.getImm1()),comment);
+                    int mem = (int)mems;
+                    pw.format("%s  %s %d%s%n", spacer,opcode,mem,comment);
                 }
                 break;
             case CONST:

@@ -38,19 +38,16 @@ public class ImmediateOp implements Op {
     }
     
     public static ImmediateOp getMemfn(OpCode opcode, Section section) {
-        int zero = section.getUByte();
-        if (zero != 0) {
-            String msg = String.format("zero flag expected%nopcode = %s flag = %d",opcode,zero);
+        long imm = section.getUByte();
+        if (opcode == MEMORY_COPY) {
+            int zero2 = section.getUByte();
+            imm = (imm << 32) | Integer.toUnsignedLong(zero2);
+        }
+        if (imm != 0) {
+            String msg = String.format("zero flag(s) expected%nopcode = %s flag(s) = %x",opcode,imm);
             throw new IllegalArgumentException(msg);
         }
-        if (opcode == MEMORY_COPY) {
-            zero = section.getUByte();
-            if (zero != 0) {
-                String msg = String.format("zero flag expected%nopcode = %s flag2 = %d",opcode,zero);
-                throw new IllegalArgumentException(msg);
-            }            
-        }
-        return new ImmediateOp(opcode,zero);
+        return new ImmediateOp(opcode,imm);
     }
     
 }

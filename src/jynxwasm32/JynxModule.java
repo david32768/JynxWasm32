@@ -53,7 +53,7 @@ public class JynxModule {
     }
 
     private void print() {
-        pw.format(".version V1_8 GENERATE_LINE_NUMBERS CHECK_REFERENCES%n");
+        pw.format(".version V1_8 SYMBOLIC_LOCAL GENERATE_LINE_NUMBERS CHECK_REFERENCES%n");
         pw.println(".macrolib wasm32MVP");
         Path srcpath = Paths.get(fileName);
         pw.format(".source %s%n",srcpath.getFileName());

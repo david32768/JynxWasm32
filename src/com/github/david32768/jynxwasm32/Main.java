@@ -25,7 +25,8 @@ public class Main {
         NAME("class_name ; default name is module-name else filename without the .wasm extension"),
         PACKAGE("add package name"),
         ;
-         private final String msg;
+        
+        private final String msg;
 
         private Option(String msg) {
             this.msg = msg;
