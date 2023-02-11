@@ -100,7 +100,7 @@ public class TypeStack {
 
     public BranchTarget getTarget(int br2level, boolean tos) {
         BlockEntry blockentryx = getUnwindBlock(br2level);
-        blockentryx.setBramchToEnd();
+        blockentryx.setBranchToEnd();
         ValueType vtr = blockentryx.getVt();
         if (blockentryx.getOpCode() == OpCode.LOOP) vtr = V00;
         FnType unwindft = vtstack.getUnwind(vtr, blockentryx.getStackptr(),tos);
@@ -138,7 +138,7 @@ public class TypeStack {
                 break;
             case END:
                 if (currentBlock.getOpCode() == OpCode.IF) {
-                    currentBlock.setBramchToEnd();
+                    currentBlock.setBranchToEnd();
                 }
                 if (currentBlock.isFallThroughToEnd()) {
                     checkStackState(currentBlock);

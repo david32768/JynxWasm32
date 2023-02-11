@@ -171,7 +171,8 @@ public class WasmModule {
     public void setLastSection(SectionType type) {
         if (type != SectionType.st_custom) {
             if (type.compareTo(lastSection) <= 0) {
-                String message = String.format("sections in  wrong order - last was %d current is %d%n",lastSection,type);
+                String message = String.format("sections in wrong order - last was %s(%d), current is %s(%d)%n",
+                        lastSection,lastSection.getId(),type,type.getId());
                 throw new IllegalStateException(message);
             }
             lastSection = type;
@@ -182,7 +183,8 @@ public class WasmModule {
     public static WasmModule getModule(String name, ByteBuffer stream) throws IOException {
         stream.order(ByteOrder.LITTLE_ENDIAN);
         if (stream.remaining() < 4) {
-            String msg = String.format("unexpected end%n length %d is less than required for magic header", stream.remaining());
+            String msg = String.format("unexpected end%n length %d is less than required for magic header",
+                    stream.remaining());
             throw new IllegalArgumentException(msg);
         }
         int magic = stream.getInt();
@@ -193,7 +195,8 @@ public class WasmModule {
             throw new IllegalArgumentException(message);
         }
         if (stream.remaining() < 4) {
-            String msg = String.format("unexpected end%n remaining length %d is less than required for version", stream.remaining());
+            String msg = String.format("unexpected end%n remaining length %d is less than required for version",
+                    stream.remaining());
             throw new IllegalArgumentException(msg);
         }
         int version = stream.getInt();

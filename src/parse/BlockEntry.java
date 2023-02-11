@@ -48,8 +48,8 @@ public class BlockEntry {
         return fallThroughToEnd;
     }
 
-    public void setBramchToEnd() {
-        this.branchToEnd = true;
+    public void setBranchToEnd() {
+        this.branchToEnd = opcode != OpCode.LOOP;
     }
 
     public void setFallThroughToEnd() {

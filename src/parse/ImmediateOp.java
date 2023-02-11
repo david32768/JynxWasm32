@@ -44,7 +44,7 @@ public class ImmediateOp implements Op {
             imm = (imm << 32) | Integer.toUnsignedLong(zero2);
         }
         if (imm != 0) {
-            String msg = String.format("zero flag(s) expected%nopcode = %s flag(s) = %x",opcode,imm);
+            String msg = String.format("zero flag expected%nopcode = %s flag(s) = %x",opcode,imm);
             throw new IllegalArgumentException(msg);
         }
         return new ImmediateOp(opcode,imm);
