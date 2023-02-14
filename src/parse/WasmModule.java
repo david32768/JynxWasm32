@@ -6,6 +6,13 @@ import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.logging.Logger;
 
+import static parse.Reason.M100;
+import static parse.Reason.M102;
+import static parse.Reason.M103;
+import static parse.Reason.M104;
+import static parse.Reason.M106;
+import static parse.Reason.M108;
+
 public class WasmModule {
 
     private final String name;
@@ -171,9 +178,9 @@ public class WasmModule {
     public void setLastSection(SectionType type) {
         if (type != SectionType.st_custom) {
             if (type.compareTo(lastSection) <= 0) {
-                String message = String.format("sections in wrong order - last was %s(%d), current is %s(%d)%n",
+                // "junk after last section"
+                throw new ParseException(M102,"sections in wrong order - last was %s(%d), current is %s(%d)%n",
                         lastSection,lastSection.getId(),type,type.getId());
-                throw new IllegalStateException(message);
             }
             lastSection = type;
         }
@@ -183,26 +190,25 @@ public class WasmModule {
     public static WasmModule getModule(String name, ByteBuffer stream) throws IOException {
         stream.order(ByteOrder.LITTLE_ENDIAN);
         if (stream.remaining() < 4) {
-            String msg = String.format("unexpected end%n length %d is less than required for magic header",
-                    stream.remaining());
-            throw new IllegalArgumentException(msg);
+            //  // "unexpected end"
+            throw new ParseException(M106,"length %d is less than required for magic header",stream.remaining());
         }
         int magic = stream.getInt();
         if (magic != 0x6d736100) {
             stream.order(ByteOrder.BIG_ENDIAN);
             magic = stream.getInt(0);
-            String message = String.format("magic header not detected%n '/0asm' not present - found %08x", magic);
-            throw new IllegalArgumentException(message);
+            // "magic header not detected"
+            throw new ParseException(M103,"'/0asm' not present - found %08x", magic);
         }
         if (stream.remaining() < 4) {
-            String msg = String.format("unexpected end%n remaining length %d is less than required for version",
+            // "unexpected end"
+            throw new ParseException(M106,"remaining length %d is less than required for version",
                     stream.remaining());
-            throw new IllegalArgumentException(msg);
         }
         int version = stream.getInt();
         if (version != 1) {
-            String msg = String.format("unknown binary version%n version = %d",version);
-            throw new IllegalArgumentException(msg);
+            // "unknown binary version"
+            throw new ParseException(M108,"version = %d",version);
         }
         Logger.getGlobal().fine(String.format("Version number = %d", version));
         WasmModule module = new WasmModule(name);
@@ -215,13 +221,13 @@ public class WasmModule {
             module.setLastSection(type);
             type.parse(module, section);
             if (section.hasRemaining() && id != 0) {
-                String msg = String.format("section size mismatch%n in section %s(%d)",type,id);
-                throw new IllegalArgumentException(msg);
+                throw new ParseException(M104,"%d bytes remaining in section %s(%d)",section.remaining(),type,id);
             }
         }
-        if (module.localfuns() > 0 && !module.atfuncidx(module.getLocalFnIndex(0)).hasCode()) {
-            String msg = String.format("function and code section have inconsistent lengths%n");
-            throw new IllegalArgumentException(msg);
+        int localfnct = module.localfuns();
+        if (localfnct > 0 && !module.atfuncidx(module.getLocalFnIndex(0)).hasCode()) {
+            // "function and code section have inconsistent lengths"
+            throw new ParseException(M100,"local func count = %d code count = 0",localfnct);
         }
         return module;
     }

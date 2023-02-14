@@ -5,6 +5,9 @@ import java.util.Arrays;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static parse.Reason.M100;
+import static parse.Reason.M200;
+
 import wasm.ControlInstruction;
 import wasm.Instruction;
 import wasm.OpCode;
@@ -148,17 +151,15 @@ public class LocalFunction implements WasmFunction {
                         break;
                 }
                 Instruction inst = op.getInstruction(ts);
-                unreachable = opcode.isTransfer();
-                unreachablelevel = 0;
                 inst = ts.changeControl(inst);
-                unreachable |= opcode == OpCode.END && !((ControlInstruction)inst).getBlock().isEndReachable();
+                unreachable = opcode.isTransfer()
+                    || opcode == OpCode.END && !((ControlInstruction)inst).getBlock().isEndReachable();
+                unreachablelevel = 0;
                 insts.add(inst);
             } catch (Exception ex) {
-                Logger.getGlobal().severe(ex.toString());
-
-                Logger.getGlobal().severe(printInsts(insts,fnname,fnsig));
-
-                Logger.getGlobal().log(Level.SEVERE, String.format("failed inst = %s%n",opcode), ex);
+                Logger.getGlobal().info(ex.toString());
+                Logger.getGlobal().info(printInsts(insts,fnname,fnsig));
+                Logger.getGlobal().log(Level.INFO, String.format("failed inst = %s%n",opcode), ex);
                 throw ex;
             }
         }
@@ -225,9 +226,8 @@ Function bodies consist of a sequence of local variable declarations followed by
         int bodies = section.vecsz();
         int localfns = module.localfuns();
         if (bodies != localfns) {
-            String msg = String.format("function and code section have inconsistent lengths%n localfns = %d bodies = %d",
-                    localfns,bodies);
-            throw new IllegalArgumentException(msg);
+            // "function and code section have inconsistent lengths"
+            throw new ParseException(M100,"local func count = %d code count = %d",localfns,bodies);
         }
         for (int i = 0; i < bodies; i++) {
             int fnnum = module.getLocalFnIndex(i);
@@ -240,7 +240,8 @@ Function bodies consist of a sequence of local variable declarations followed by
             ArrayList<Instruction> insts = getInsts(ts,localfn.getName(),fnsig);
             OpCode lastop = insts.get(insts.size() - 1).getOpCode();
             if (lastop != OpCode.END) {
-                Logger.getGlobal().severe(String.format("Code does not end with END%n"));
+                // "END opcode expected"
+                throw new ParseException(M200,"lastop = %s",lastop);
             }
             Op op = ControlOp.getInstance(OpCode.RETURN, null);
             Instruction inst = op.getInstruction(ts);

@@ -1,8 +1,10 @@
 package parse;
 
 import java.util.ArrayList;
+
 import static parse.ValueType.I32;
 import static parse.ValueType.V00;
+
 import util.LIFOStack;
 import wasm.Instruction;
 import wasm.OpCode;

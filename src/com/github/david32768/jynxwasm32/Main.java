@@ -1,20 +1,24 @@
 package com.github.david32768.jynxwasm32;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Optional;
+import java.util.Arrays;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
+import java.util.Optional;
 import java.util.stream.Stream;
+
 import jynxwasm32.JavaName;
 import jynxwasm32.JynxModule;
 import parse.WasmModule;
 import util.BasicFormatter;
+import utility.Binary;
 
 public class Main {
 
@@ -39,12 +43,18 @@ public class Main {
         }
     }
     
+    private static final String VERSION = "0.1.1";
+    
     private static void usage() {
-        System.err.println("\nUsage: {options} wasm-file\n");
-        System.err.println("Options are:\n");
+        System.err.format("\nUsage: (version %s)\n",VERSION);
+        System.err.println("    2jynx {options} wasm-file");
+        System.err.println("        convert to a jynx file\n");
+        System.err.println("    Options are:\n");
         for (Option opt: Option.values()) {
-            System.err.format("--%s %s%n", opt,opt.msg);
+            System.err.format("        --%s %s%n", opt,opt.msg);
         }
+        System.err.println("\n    testsuite [--LEVEL <log-level>] wast-file");
+        System.err.println("        run w3c-1.0 testsuite file that contains 'module binary'\n");
         System.exit(1);
     }
     
@@ -55,6 +65,19 @@ public class Main {
         ha.setFormatter(new BasicFormatter());
         root.addHandler(ha);
 
+        if (args.length < 1) {
+            usage();
+            return;
+        }
+
+        if (args[0].equals("testsuite")) {
+            args = Arrays.copyOfRange(args, 1, args.length);
+            testSuite(args);
+            return;
+        } else if (args[0].equals("2jynx")) {
+            args = Arrays.copyOfRange(args, 1, args.length);
+        }
+        
         if (args.length < 1) {
             usage();
             return;
@@ -133,6 +156,41 @@ public class Main {
         }
         JynxModule.output(module,file,classname,javaname,comments);
 
+    }
+    
+    private static void testSuite(String[] args)  throws IOException {
+        int argct = args.length;
+        if (argct == 0) {
+            usage();
+            System.exit(0);
+        }
+        Level loglevel = Level.WARNING;
+        String file = args[0];
+        switch(argct) {
+            case 3:
+                if (args[0].toUpperCase().equals("--LEVEL")) {
+                    try {
+                        loglevel = Level.parse(args[1].toUpperCase());
+                    } catch (IllegalArgumentException ex) {
+                        System.err.println();
+                        System.err.println(ex.toString());
+                        usage();
+                        System.exit(1);
+                    }
+                    file = args[2];
+                } else {
+                    usage();
+                    System.exit(1);
+                }
+                break;
+            case 1:
+                break;
+            default:
+                usage();
+                System.exit(1);
+        }
+        Logger.getGlobal().setLevel(loglevel);
+        Binary.testFile(Paths.get(file));
     }
     
 }

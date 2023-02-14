@@ -3,6 +3,8 @@ package parse;
 import java.util.function.BiConsumer;
 import java.util.logging.Logger;
 
+import static parse.Reason.M211;
+
 public enum SectionType {
 
     // sections must be in this order apart from section 0
@@ -49,7 +51,8 @@ public enum SectionType {
                 return st;
             }
         }
-        throw new IllegalArgumentException(String.format("invalid section id%n section id = %d",idx));
+        // "malformed section id"
+        throw new ParseException(M211,"section id = %d",idx);
     }
 
     private static void parseCustom(WasmModule module, Section section) {

@@ -1,5 +1,6 @@
 package parse;
 
+import static parse.Reason.M109;
 import static wasm.OpCode.MEMORY_COPY;
 
 import wasm.OpCode;
@@ -44,8 +45,8 @@ public class ImmediateOp implements Op {
             imm = (imm << 32) | Integer.toUnsignedLong(zero2);
         }
         if (imm != 0) {
-            String msg = String.format("zero flag expected%nopcode = %s flag(s) = %x",opcode,imm);
-            throw new IllegalArgumentException(msg);
+            // "zero flag expected"
+            throw new ParseException(M109,"opcode = %s flag(s) = %x",opcode,imm);
         }
         return new ImmediateOp(opcode,imm);
     }

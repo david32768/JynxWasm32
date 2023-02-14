@@ -3,6 +3,11 @@ package parse;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.Charset;
+
+import static parse.Reason.M205;
+import static parse.Reason.M206;
+import static parse.Reason.M207;
+
 import wasm.OpCode;
 import wasm.OpType;
 
@@ -21,15 +26,19 @@ public final class Section {
         this.sectionbb.order(ByteOrder.LITTLE_ENDIAN);
         this.payload_len = getU32();
         this.position = this.sectionbb.position();
-        int newlimit = this.sectionbb.position() + payload_len;
+        int newlimit = this.position() + payload_len;
         if (newlimit > buffer.limit()) {
-            String msg = String.format("unexpected end of section or function%n newlimit (%d) > buffer limit (%d)",
-                    newlimit,buffer.limit());
-            throw new IllegalArgumentException(msg);
+            // "unexpected end of section or function
+            throw new ParseException(M207,"%s section: position (%d) + length (%d) = %d > buffer limit (%d)",
+                    this.type,this.position,this.payload_len,newlimit,buffer.limit());
         }
         this.sectionbb.limit(newlimit);
         buffer.position(newlimit);  // after this section
         this.limit = newlimit;
+    }
+
+    public SectionType getType() {
+        return type;
     }
 
     public static Section getInstance(SectionType type,ByteBuffer buffer) {
@@ -58,6 +67,10 @@ public final class Section {
 
     public void discardRemaining() {
         sectionbb.position(limit);
+    }
+    
+    public int remaining() {
+        return sectionbb.remaining();
     }
     
     public boolean hasRemaining() {
@@ -147,17 +160,16 @@ public final class Section {
                     byte mask = unusedLEB(N,signed);
                     byte unused = signed && result < 0?mask:0;
                     if ((bit8 & mask) != unused) {
-                        String msg = String.format("integer too large%n"
-                                + " unused bits%nresult = %d bit8 = %02x mask = %016x",
+                        // "integer too large"
+                        throw new ParseException(M206,"unused bits: result = %d bit8 = %02x mask = %016x",
                                 result,bit8,mask);
-                        throw new IllegalArgumentException(msg);
                     }
                 }
                 return result;
             }
         }
-        String msg = String.format("integer representation too long%n expected %s%d",signed?"":"U",N);
-        throw new IllegalArgumentException(msg);
+        // "integer representation too large"
+        throw new ParseException(M205,"expected %s%d",signed?"I":"U",N);
     }
 
     public boolean getFlag() {
@@ -181,7 +193,9 @@ public final class Section {
     public int getU32() {
         int result = (int)LEBint(32, false);
         if (result < 0) {
-            throw new UnsupportedOperationException("unsigned integer too large to be held in int");
+            // "integer too large"
+            throw new ParseException(M206,"(Java limitation) as unsigned %d would be negative",
+                    Integer.toUnsignedLong(result));
         }
         return result;
     }

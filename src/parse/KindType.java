@@ -1,5 +1,7 @@
 package parse;
 
+import java.util.Optional;
+
 public enum KindType {
     Function(0),
     Table(1),
@@ -21,11 +23,11 @@ public enum KindType {
     * `2` indicating a `Memory` [import](Modules.md#imports) or [definition](Modules.md#linear-memory-section)
     * `3` indicating a `Global` [import](Modules.md#imports) or [definition](Modules.md#global-section)
     */
-    public static KindType getInstance(int idx) {
+    public static Optional<KindType> getInstance(int idx) {
         for (KindType kt:values()) {
-            if (kt.id == idx) return kt;
+            if (kt.id == idx) return Optional.of(kt);
         }
-        throw new UnsupportedOperationException("unknown kind - " + idx);
+        return Optional.empty();
     }
     
 }

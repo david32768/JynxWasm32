@@ -1,6 +1,11 @@
 package parse;
 
 import java.util.logging.Logger;
+import java.util.Optional;
+import static parse.Reason.M101;
+
+import static parse.Reason.M208;
+import static parse.Reason.M209;
 import static parse.ValueType.V00;
 
 public class ParseMethods {
@@ -64,7 +69,13 @@ public class ParseMethods {
 
             String module_str = section.getName();
             String field_str = section.getName();
-            KindType kt = KindType.getInstance(section.getUByte());
+            int idx = section.getUByte();
+            Optional<KindType> optkt = KindType.getInstance(idx);
+            if (!optkt.isPresent()) {
+                // "malformed import kind"
+                throw new ParseException(M209,"kind = %d",idx);
+            }
+            KindType kt = optkt.get();
             Kind kind;
             KindName kn;
             switch (kt) {
@@ -160,7 +171,13 @@ only valid index value for a memory or table export is 0.
         int count = section.vecsz();
         for (int i = 0; i < count;i++) {
             String field_str = section.getName();
-            KindType kt = KindType.getInstance(section.getUByte());
+            int idx = section.getUByte();
+            Optional<KindType> optkt = KindType.getInstance(idx);
+            if (!optkt.isPresent()) {
+                // "malformed export kind"
+                throw new ParseException(M208,"kind = %d",idx);
+            }
+            KindType kt = optkt.get();
             int index;
             String name = module.getName();
             Kind kind;
@@ -232,6 +249,9 @@ a `elem_segment` is:
     public static void parseElements(WasmModule module, Section section)  {
         int count = section.vecsz();
         for (int i = 0; i < count ; i++) {
+            if (!section.hasRemaining()) {
+                throw new ParseException(M101, "%d %ss present but %d expected", i, section.getType(),count);
+            }
             int index = section.tableidx();
             Table table = module.attableidx(index);
             ConstantExpression constexpr = ConstantExpression.parseConstantExpression(module, section);

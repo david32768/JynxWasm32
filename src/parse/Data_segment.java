@@ -27,9 +27,8 @@ public class Data_segment {
         int count = section.vecsz();
         Integer sec12ct = module.getDataCount();
         if (sec12ct != null && sec12ct != count) {
-            String msg = String.format("number of data segments %d is not equal to section 12 count of %d",
+            throw new ParseException(Reason.M201,"number of data segments = %d, section 12 count = %d",
                     count,sec12ct);
-            Logger.getGlobal().severe(msg);
         }
         for (int i = 0; i < count;i++) {
             /*

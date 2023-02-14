@@ -3,6 +3,8 @@ package parse;
 import java.util.ArrayList;
 import java.util.logging.Logger;
 
+import static parse.Reason.M105;
+
 public class Local implements CanHaveDebugName {
 
     private final ValueType type;
@@ -88,6 +90,8 @@ It is legal to have several entries with the same type.
 
     */    
     
+    private static int MAXLOCALS = 2*Short.MAX_VALUE + 1;
+    
     public static ArrayList<Local> parse(Section section, LocalFunction fn) {
         // parameters are parms 0 ->
         FnType fntype = fn.getFnType();
@@ -105,10 +109,16 @@ It is legal to have several entries with the same type.
 
         int local_count = section.vecsz();
         Logger.getGlobal().fine(String.format("locals has %d sections", local_count));
+        long total = 0;
         for (int i = 0; i < local_count;i++) {
             int count = section.vecsz();
             ValueType type = section.getValueType();
-            Logger.getGlobal().finer(String.format("%d locals of type %s", count,type));
+            Logger.getGlobal().fine(String.format("%d locals of type %s", count,type));
+            total += count;
+            if (total > MAXLOCALS) {
+                // "too many locals"
+                throw new ParseException(M105,"total locals now exceed %d", total, MAXLOCALS);
+            }
             for (int j = 0; j < count;j++) {
                 Local local = new Local(type,jvmnum,relnum);
                 result.add(local);

@@ -1,5 +1,6 @@
 package parse;
 
+import static parse.Reason.M109;
 import static wasm.OpCode.*;
 
 import wasm.OpCode;
@@ -54,8 +55,8 @@ public class ObjectOp implements Op {
                 index = section.typeidx();
                 index2 = section.getUByte();
                 if (index2 != 0) { // future table number?
-                    String msg = String.format("zero flag expected%nopcode = %s flag = %d",opcode,index2);
-                    throw new IllegalArgumentException(msg);
+                    // "zero flag expected"
+                    throw new ParseException(M109,"opcode = %s flag = %d",opcode,index2);
                 }
                 break;
             default:

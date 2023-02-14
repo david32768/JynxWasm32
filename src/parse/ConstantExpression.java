@@ -1,6 +1,7 @@
 package parse;
 
 import java.util.ArrayList;
+import static parse.Reason.M204;
 import wasm.Instruction;
 import wasm.ObjectInstruction;
 import wasm.OpCode;
@@ -44,19 +45,22 @@ public class ConstantExpression {
     public static ConstantExpression parseConstantExpression(WasmModule module, Section section)  {
         TypeStack typestack = new TypeStack(FnType.produce(ValueType.X32), new ArrayList<>(), section, module);
         ArrayList<Instruction> insts = new ArrayList<>();
-        Op op = section.getop();
-        Instruction inst = op.getInstruction(typestack);
-        insts.add(inst);
-        while (op.getOpCode() != OpCode.END) {
-            op = section.getop();
-            inst = op.getInstruction(typestack);
+        OpCode opcode = null;
+        while (opcode != OpCode.END) {
+            Op op = section.getop();
+            opcode = op.getOpCode();
+            if (opcode != OpCode.END && opcode != OpCode.GLOBAL_GET && opcode.getOpType() != OpType.CONST) {
+                // "illegal opcode"
+                throw new ParseException(M204,"opcode = %s", opcode);
+            }
+            Instruction inst = op.getInstruction(typestack);
             insts.add(inst);
         }
         if (insts.size() != 2) {
             throw new IllegalArgumentException("Invalid initial expression - length not 2 but is " + insts.size());
         }
         Instruction constinst = insts.get(0);
-        OpCode opcode = constinst.getOpCode();
+        opcode = constinst.getOpCode();
         if (opcode == OpCode.GLOBAL_GET) {
             ObjectInstruction objinst = (ObjectInstruction)constinst;
             Global global = (Global)objinst.getObject();
