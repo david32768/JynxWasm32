@@ -1,7 +1,5 @@
 package parse;
 
-import java.util.ArrayList;
-
 import static parse.ValueType.I32;
 import static parse.ValueType.V00;
 
@@ -14,13 +12,13 @@ public class TypeStack {
     private final ValueTypeStack vtstack = new ValueTypeStack();
     private final LIFOStack<BlockEntry> blocks = new LIFOStack<>();
     private final ValueType vtfnr;
-    private final ArrayList<Local> locals;
+    private final Local[] locals;
     private final Section code;
     private final WasmModule module;
 
     private BlockEntry currentBlock;
 
-    public TypeStack(FnType fntype, ArrayList<Local> locals,Section code, WasmModule module) {
+    public TypeStack(FnType fntype, Local[] locals,Section code, WasmModule module) {
         this.vtfnr = fntype.getRtype();
         this.locals = locals;
         this.code = code;
@@ -40,7 +38,7 @@ public class TypeStack {
     }
 
     public Local getLocal(int index) {
-        return locals.get(index);
+        return locals[index];
     }
 
     public ValueType peek() {

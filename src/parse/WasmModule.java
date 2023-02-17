@@ -161,9 +161,11 @@ public class WasmModule {
         memories.add(memory);
     }
     
-    public int addTable(Table table) {
+    public void addTable(Table table) {
+        if (!tables.isEmpty()) {
+            throw new IllegalArgumentException("more than one table");
+        }
         tables.add(table);
-        return tables.size() - 1;
     }
 
     public void setDataCount(Integer datacount) {
@@ -221,6 +223,7 @@ public class WasmModule {
             module.setLastSection(type);
             type.parse(module, section);
             if (section.hasRemaining() && id != 0) {
+                // "section size mismatch"
                 throw new ParseException(M104,"%d bytes remaining in section %s(%d)",section.remaining(),type,id);
             }
         }

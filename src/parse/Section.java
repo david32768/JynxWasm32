@@ -28,7 +28,7 @@ public final class Section {
         this.position = this.sectionbb.position();
         int newlimit = this.position() + payload_len;
         if (newlimit > buffer.limit()) {
-            // "unexpected end of section or function
+            // "length out of bounds"
             throw new ParseException(M207,"%s section: position (%d) + length (%d) = %d > buffer limit (%d)",
                     this.type,this.position,this.payload_len,newlimit,buffer.limit());
         }
@@ -132,6 +132,11 @@ public final class Section {
         return ba;
     }
     
+    public byte[] byteVector() {
+        int size = vecsz();
+        return byteArray(size);
+    }
+
     public int getUByte() {
         return Byte.toUnsignedInt(sectionbb.get());
     }
@@ -168,7 +173,7 @@ public final class Section {
                 return result;
             }
         }
-        // "integer representation too large"
+        // "integer representation too long"
         throw new ParseException(M205,"expected %s%d",signed?"I":"U",N);
     }
 

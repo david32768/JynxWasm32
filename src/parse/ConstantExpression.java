@@ -1,7 +1,9 @@
 package parse;
 
 import java.util.ArrayList;
+
 import static parse.Reason.M204;
+
 import wasm.Instruction;
 import wasm.ObjectInstruction;
 import wasm.OpCode;
@@ -43,7 +45,7 @@ public class ConstantExpression {
     }
         
     public static ConstantExpression parseConstantExpression(WasmModule module, Section section)  {
-        TypeStack typestack = new TypeStack(FnType.produce(ValueType.X32), new ArrayList<>(), section, module);
+        TypeStack typestack = new TypeStack(FnType.produce(ValueType.X32), new Local[0], section, module);
         ArrayList<Instruction> insts = new ArrayList<>();
         OpCode opcode = null;
         while (opcode != OpCode.END) {

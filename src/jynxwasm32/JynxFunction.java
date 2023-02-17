@@ -51,7 +51,9 @@ public class JynxFunction {
             Logger.getGlobal().info(msg);
             changect += me.getValue();
         }
-        String msg = String.format("inst ct = %d optimised ct = %d",ct,changect);
+        String msg = String.format("total optimised = %d",changect);
+        Logger.getGlobal().info(msg);
+        msg = String.format("total instructions = %d",ct);
         Logger.getGlobal().info(msg);
     }
     
@@ -78,7 +80,13 @@ public class JynxFunction {
         String from = fn.getFieldName().equals(jvmname)?"":" ; " + fn.getFieldName();
         String access = fn.isPrivate()?"private":"public";
         pw.format(".method %s static %s%s%s%n",access,jvmname,fn.getFnType().wasmString(),from);
+        int maxlocal = 0;
         for (Local local:fn.getLocals()) {
+            ValueType vt = local.getType();
+            ++maxlocal;
+            if (vt == I64 || vt == F64) {
+                ++maxlocal;
+            }
             if (local.isParm()) {
                 String name = local.getDebugName();
                 if (name != null) {
@@ -87,7 +95,7 @@ public class JynxFunction {
                 continue;
             }
             OpCode opcode;
-            switch(local.getType()) {
+            switch(vt) {
                 case I32:
                     opcode = OpCode.I32_CONST;
                     break;
@@ -106,10 +114,10 @@ public class JynxFunction {
            pw.format("  %s 0%n",opcode);
            pw.format("  %s %s%n",OpCode.LOCAL_SET,local.getName());
         }
-        int localmax = fn.getMaxLocals();
         int maxstack = printInsts(fn.getInsts(), fn.getFieldName());
-        pw.format(".limit locals %d%n",localmax);
             // + 2 to allow use of one temp variable when generating jynx which may be double or long
+        maxlocal += 2;
+        pw.format(".limit locals %d%n",maxlocal);
         pw.format(".limit stack %d%n",maxstack);
             // + 4 for ExtendedOps
         pw.println(".end_method");

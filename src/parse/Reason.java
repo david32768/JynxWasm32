@@ -10,7 +10,7 @@ public enum Reason {
     
     // w3c-1.0
     M100("function and code section have inconsistent lengths"),
-    M101("invalid value type"), // NOT USED
+    M101("invalid value type"), //NOT USED
     M102("junk after last section","unexpected content after last section"),
     M103("magic header not detected"),
     M104("section size mismatch"),

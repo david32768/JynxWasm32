@@ -43,7 +43,7 @@ public class Main {
         }
     }
     
-    private static final String VERSION = "0.1.1";
+    private static final String VERSION = "0.1.2";
     
     private static void usage() {
         System.err.format("\nUsage: (version %s)\n",VERSION);
@@ -53,7 +53,7 @@ public class Main {
         for (Option opt: Option.values()) {
             System.err.format("        --%s %s%n", opt,opt.msg);
         }
-        System.err.println("\n    testsuite [--LEVEL <log-level>] wast-file");
+        System.err.println("\n    testparse [--LEVEL <log-level>] wast-file");
         System.err.println("        run w3c-1.0 testsuite file that contains 'module binary'\n");
         System.exit(1);
     }
@@ -70,7 +70,7 @@ public class Main {
             return;
         }
 
-        if (args[0].equals("testsuite")) {
+        if (args[0].equals("testparse") || args[0].equals("testsuite")) {
             args = Arrays.copyOfRange(args, 1, args.length);
             testSuite(args);
             return;

@@ -51,37 +51,43 @@ public class Memory implements Kind {
     }
     
 
-/*
-    ### Memory section
+    /*
+        ### Memory section
 
-ID: `memory`
+    ID: `memory`
 
-The encoding of a [Memory section](Modules.md#linear-memory-section):
+    The encoding of a [Memory section](Modules.md#linear-memory-section):
 
-| Field   | Type           | Description                                             |
-| ------- |  ------------- | ------------------------------------------------------- |
-| count   | `varuint32`    | indicating the number of memories defined by the module |
-| entries | `memory_type*` | repeated `memory_type` entries as described below       |
-
-| Field | Type               | Description                    |
-| ----- | ------------------ | ----------- -------------------|
-|       | `resizable_limits` | see [above](#resizable_limits) |
-
-Note that the initial/maximum fields are specified in units of 
-[WebAssembly pages](Semantics.md#linear-memory).
-
-In the MVP, the number of memories must be no more than 1.
-
+    | Field   | Type           | Description                                             |
+    | ------- |  ------------- | ------------------------------------------------------- |
+    | count   | `varuint32`    | indicating the number of memories defined by the module |
+    | entries | `memory_type*` | repeated `memory_type` entries as described below       |
 
     */    
     public static void parse(WasmModule module, Section section)  {
-        int count = section.vecsz();
-        for (int i = 0;i < count;i++) {
-            Limits limits = Limits.parse(section);
-            KindName kn = new KindName(KindType.Memory, module.getName(), null, Status.PRIVATE, module.memidx());
-            Memory memory = new Memory(limits,kn);
-            module.addMemory(memory);
-            Logger.getGlobal().fine(String.format("memory %d = %s", i, memory));
-        }        
+        ParseMethods.parseSectionVector(section, i->module, Memory::parseMemory);
+    }
+
+    /*
+
+    memory entry
+
+        | Field | Type               | Description                    |
+    | ----- | ------------------ | ----------- -------------------|
+    |       | `resizable_limits` | see [above](#resizable_limits) |
+
+    Note that the initial/maximum fields are specified in units of 
+    [WebAssembly pages](Semantics.md#linear-memory).
+
+    In the MVP, the number of memories must be no more than 1.
+
+
+    */    
+    public static void parseMemory(WasmModule module, Section section, int i)  {
+        Limits limits = Limits.parse(section);
+        KindName kn = new KindName(KindType.Memory, module.getName(), null, Status.PRIVATE, module.memidx());
+        Memory memory = new Memory(limits,kn);
+        module.addMemory(memory);
+        Logger.getGlobal().fine(String.format("memory %d = %s", i, memory));
     }
 }

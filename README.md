@@ -13,11 +13,8 @@ The supported extensions to the mvp are
 ## Usage
 
 Usage: (version 0.1.1)
-
-```
-	2jynx {options} wasm-file
-		convert to a jynx file
-```
+    2jynx {options} wasm-file
+        convert to a jynx file
 
 Options are:
 
@@ -27,11 +24,9 @@ Options are:
 *	--PACKAGE add package name
 *	--NAME class_name  ; default is module-name else filename without the .wasm extension
 
-```
-testsuite [--LEVEL <log-level>] wast-file
-		run w3c-1.0 testsuite file that contains 'module binary'
-		e.g. [binary.wast in w3c-1.0 branch](https://github.com/WebAssembly/spec/blob/w3c-1.0/test/core/binary.wast)
-```
+    testparse [--LEVEL <log-level>] wast-file
+        run w3c-1.0 testsuite file that contains 'module binary'
+	e.g. [binary.wast in w3c-1.0 branch](https://github.com/WebAssembly/spec/blob/w3c-1.0/test/core/binary.wast)
 
 ## Notice
 

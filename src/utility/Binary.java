@@ -7,11 +7,10 @@ import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
+import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.Optional;
 
 import static parse.Reason.M0;
 import static parse.Reason.M107;
@@ -37,7 +36,7 @@ public class Binary {
             pw.println("expected - " + expected.reason());
             pw.println("actual - " + msg);
             if (actual == expected) {
-                pw.println("successful");
+                pw.println("parse test successful");
             }
         }
         Logger.getGlobal().log(loglevel, sw.toString());

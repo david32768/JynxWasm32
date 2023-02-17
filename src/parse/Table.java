@@ -69,30 +69,35 @@ public class Table implements Kind {
     /*
     ### Table section
 
-The encoding of a [Table section](Modules.md#table-section):
+    The encoding of a [Table section](Modules.md#table-section):
 
-| Field   | Type          | Description                                           |
-| ------- |  ------------ | ----------------------------------------------------- |
-| count   | `varuint32`   | indicating the number of tables defined by the module |
-| entries | `table_type*` | repeated `table_type` entries as described below      |
+    | Field   | Type          | Description                                           |
+    | ------- |  ------------ | ----------------------------------------------------- |
+    | count   | `varuint32`   | indicating the number of tables defined by the module |
+    | entries | `table_type*` | repeated `table_type` entries as described below      |
 
-| Field        | Type               | Description                                        |
-| ------------ | ------------------ | -------------------------------------------------- |
-| element_type | `varuint7`         | `0x20`, indicating [`anyfunc`](Semantics.md#table) |
-|              | `resizable_limits` | see [above](#resizable_limits)                     |
-
-In the MVP, the number of tables must be no more than 1.
     */
 
     public static void parse(WasmModule module, Section section)  {
-        int count = section.vecsz();
-        if (count > 1) throw new IllegalArgumentException("number of tables > 1; found " + count);
-        for (int i = 0;i < count;i++) {
-            KindName kn = new KindName(KindType.Table, module.getName(), null, Status.PRIVATE, module.tableidx());
-            Table table = parseKind(section,kn);
-            module.addTable(table);
-        }
-        Logger.getGlobal().fine(String.format("number of tables = %d", count));
+        ParseMethods.parseSectionVector(section, i->module, Table::parseTable);
+    }
+
+    /*
+    table_type
+
+    | Field        | Type               | Description                                        |
+    | ------------ | ------------------ | -------------------------------------------------- |
+    | element_type | `varuint7`         | `0x20`, indicating [`anyfunc`](Semantics.md#table) |
+    |              | `resizable_limits` | see [above](#resizable_limits)                     |
+
+    In the MVP, the number of tables must be no more than 1.
+    */
+
+    public static void parseTable(WasmModule module, Section section, int i)  {
+        KindName kn = new KindName(KindType.Table, module.getName(), null, Status.PRIVATE, module.tableidx());
+        Table table = parseKind(section,kn);
+        module.addTable(table);
+        Logger.getGlobal().fine(String.format("table %d = %s", i, table));
     }
 
     

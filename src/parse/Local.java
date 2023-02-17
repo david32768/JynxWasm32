@@ -8,23 +8,21 @@ import static parse.Reason.M105;
 public class Local implements CanHaveDebugName {
 
     private final ValueType type;
-    private final int jvmnum;
     private final int relnum;
     private final boolean parm;
     
     private Number value;
     private String name;
     
-    private Local(ValueType type, int jvmnum, int relnum, boolean parm) {
+    private Local(ValueType type, int relnum, boolean parm) {
         this.type = type;
-        this.jvmnum = jvmnum;
         this.relnum = relnum;
         this.parm = parm;
         this.value = type.getZero();
     }
 
-    private Local(ValueType type, int jvmnum, int relnum) {
-        this(type,jvmnum,relnum,false);
+    private Local(ValueType type, int relnum) {
+        this(type,relnum,false);
     }
 
     public Number getValue() {
@@ -61,13 +59,9 @@ public class Local implements CanHaveDebugName {
         return relnum;
     }
 
-    public int getNextJvmnum() {
-        return jvmnum + type.getStackSize();
-    }
-
     @Override
     public String toString() {
-        return String.format("%s %d %s",type,jvmnum,parm?"parameter":"");
+        return String.format("%s %d %s",type,relnum,parm?"parameter":"");
     }
 
     public Number setValue(Number value) {
@@ -92,41 +86,44 @@ It is legal to have several entries with the same type.
     
     private static int MAXLOCALS = 2*Short.MAX_VALUE + 1;
     
-    public static ArrayList<Local> parse(Section section, LocalFunction fn) {
+    public static Local[] parse(Section section, LocalFunction fn) {
         // parameters are parms 0 ->
         FnType fntype = fn.getFnType();
         ValueType[] parms = fntype.getParm();
         ArrayList<Local> result = new ArrayList<>();
-        int jvmnum = 0;
         int relnum = 0;
         for (int i = 1; i < parms.length;++i) {
             ValueType vt = parms[i];
-            Local local = new Local(vt,jvmnum,relnum,true);
+            Local local = new Local(vt,relnum,true);
             result.add(local);
-            jvmnum = local.getNextJvmnum();
             ++relnum;
         }
 
-        int local_count = section.vecsz();
-        Logger.getGlobal().fine(String.format("locals has %d sections", local_count));
+        LocalsVT[] vtlocals = ParseMethods.parseArray(section, LocalsVT[] ::new,
+                sect->new LocalsVT(sect.vecsz(),sect.getValueType()));
+        Logger.getGlobal().fine(String.format("locals has %d sections", vtlocals.length));
+
         long total = 0;
-        for (int i = 0; i < local_count;i++) {
-            int count = section.vecsz();
-            ValueType type = section.getValueType();
+        for (LocalsVT lvt:vtlocals) {
+            int count = lvt.count();
+            ValueType type = lvt.vt();
             Logger.getGlobal().fine(String.format("%d locals of type %s", count,type));
-            total += count;
-            if (total > MAXLOCALS) {
-                // "too many locals"
-                throw new ParseException(M105,"total locals now exceed %d", total, MAXLOCALS);
-            }
-            for (int j = 0; j < count;j++) {
-                Local local = new Local(type,jvmnum,relnum);
-                result.add(local);
-                jvmnum = local.getNextJvmnum();
-                ++relnum;
-            }
+            total += Integer.toUnsignedLong(lvt.count());
         }
-        return result;
+        if (total > MAXLOCALS) {
+            // "too many locals"
+            throw new ParseException(M105,"total locals is %d; implementation limit is %d", total, MAXLOCALS);
+        }
+        for (LocalsVT lvt:vtlocals) {
+            int count = lvt.count();
+            ValueType type = lvt.vt();
+            for (int j = 0; j < count;j++) {
+                Local local = new Local(type,relnum);
+                result.add(local);
+                ++relnum;
+            }            
+        }
+        return result.toArray(new Local[0]);
     }
 
 }

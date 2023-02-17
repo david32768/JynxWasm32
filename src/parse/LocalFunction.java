@@ -4,8 +4,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
 import static parse.Reason.M100;
+
 import static parse.Reason.M200;
 
 import wasm.ControlInstruction;
@@ -46,9 +46,9 @@ public class LocalFunction implements WasmFunction {
         return found;
     }
 
-    private void setLocalFunction(int fnnum, ArrayList<Local> locals,
+    private void setLocalFunction(int fnnum, Local[] locals,
             ArrayList<Instruction> insts, FnType fntype) { //, int maxstacksz) {
-        this.locals = locals.toArray(new Local[0]);
+        this.locals = locals;
         this.insts = insts;
         if (fnnum != kindName.getNumber()) {
             String msg = String.format("set fnnum %d is different from original %d",fnnum,kindName.getNumber());
@@ -171,12 +171,6 @@ public class LocalFunction implements WasmFunction {
         return fntype.wasmString();
     }
 
-    public int getMaxLocals() {
-        int localmax = locals.length == 0?0
-                :locals[locals.length - 1].getNextJvmnum();// .getJvmnum() + 2; // in case last local was double or long;
-        return localmax;
-    }
-    
     private static String printInsts(ArrayList<Instruction> insts, String fnname, FnType fnsig) {
         StringBuilder sb = new StringBuilder();
         ValueTypeStack vts = new ValueTypeStack();
@@ -196,59 +190,69 @@ public class LocalFunction implements WasmFunction {
   /*
     ### Code section
 
-ID: `code`
+    ID: `code`
 
-The code section contains a body for every function in the module.
-The count of function declared in the [function section](#function-section)
-and function bodies defined in this section must be the same and the `i`th
-declaration corresponds to the `i`th function body.
+    The code section contains a body for every function in the module.
+    The count of function declared in the [function section](#function-section)
+    and function bodies defined in this section must be the same and the `i`th
+    declaration corresponds to the `i`th function body.
 
-| Field  | Type             | Description                                     |
-| ----- -| ---------------- | ----------------------------------------------- |
-| count  | `varuint32`      | count of function bodies to follow              |
-| bodies | `function_body*` | sequence of [Function Bodies](#function-bodies) |
-
-    # Function Bodies
-
-Function bodies consist of a sequence of local variable declarations followed by 
-[bytecode instructions](Semantics.md). Each function body must end with the `end` opcode.
-
-| Field       | Type           | Description                               |
-| ----------- | -------------- | ----------------------------------------- |
-| body_size   | `varuint32`    | size of function body to follow, in bytes |
-| local_count | `varuint32`    | number of local entries                   |
-| locals      | `local_entry*` | local variables                           |
-| code        | `byte*`        | bytecode of the function                  |
-| end         | `byte`         | `0x0f`, indicating the end of the body    |
+    | Field  | Type             | Description                                     |
+    | ----- -| ---------------- | ----------------------------------------------- |
+    | count  | `varuint32`      | count of function bodies to follow              |
+    | bodies | `function_body*` | sequence of [Function Bodies](#function-bodies) |
 
      */
     public static void parse(WasmModule module, Section section) {
-        int bodies = section.vecsz();
-        int localfns = module.localfuns();
-        if (bodies != localfns) {
-            // "function and code section have inconsistent lengths"
-            throw new ParseException(M100,"local func count = %d code count = %d",localfns,bodies);
-        }
-        for (int i = 0; i < bodies; i++) {
-            int fnnum = module.getLocalFnIndex(i);
-            LocalFunction localfn = (LocalFunction)module.atfuncidx(fnnum);
-            Logger.getGlobal().fine(String.format("Function %d %s", fnnum,localfn.getName()));
-            Section code = Section.getSubSection(section);
-            FnType fnsig = localfn.getFnType(); //module.getSignature(i);
-            ArrayList<Local> locals = Local.parse(code, localfn);
-            TypeStack ts = new TypeStack(fnsig, locals,code,module);
-            ArrayList<Instruction> insts = getInsts(ts,localfn.getName(),fnsig);
-            OpCode lastop = insts.get(insts.size() - 1).getOpCode();
-            if (lastop != OpCode.END) {
-                // "END opcode expected"
-                throw new ParseException(M200,"lastop = %s",lastop);
-            }
-            Op op = ControlOp.getInstance(OpCode.RETURN, null);
-            Instruction inst = op.getInstruction(ts);
-            inst = ts.changeControl(inst);
-            insts.add(inst);
-            localfn.setLocalFunction(fnnum, locals, insts, fnsig);//, ts.getMaxsize());
-            Logger.getGlobal().fine(String.format("function body %d has %d locals and %d insts", i, locals.size(),insts.size()));
-        }
+        ParseMethods.parseSectionVector(section, i->checkCount(module,i),LocalFunction::parseLocalFunction);
     }
+    
+
+    public static WasmModule checkCount(WasmModule module, Integer count) {
+        int localfns = module.localfuns();
+        if (!count.equals(localfns)) {
+            // "function and code section have inconsistent lengths"
+            throw new ParseException(M100,"local func count = %d code count = %d",localfns,count);
+        }
+        return module;
+    }
+    
+    /*
+    # Function Bodies
+
+    Function bodies consist of a sequence of local variable declarations followed by 
+    [bytecode instructions](Semantics.md). Each function body must end with the `end` opcode.
+
+    | Field       | Type           | Description                               |
+    | ----------- | -------------- | ----------------------------------------- |
+    | body_size   | `varuint32`    | size of function body to follow, in bytes |
+    | local_count | `varuint32`    | number of local entries                   |
+    | locals      | `local_entry*` | local variables                           |
+    | code        | `byte*`        | bytecode of the function                  |
+    | end         | `byte`         | `0x0f`, indicating the end of the body    |
+
+     */
+    public static void parseLocalFunction(WasmModule module, Section section, int i) {
+        int fnnum = module.getLocalFnIndex(i);
+        LocalFunction localfn = (LocalFunction)module.atfuncidx(fnnum);
+        Logger.getGlobal().fine(String.format("Function %d %s", fnnum,localfn.getName()));
+        Section code = Section.getSubSection(section);
+        FnType fnsig = localfn.getFnType(); //module.getSignature(i);
+        Local[] locals = Local.parse(code, localfn);
+        TypeStack ts = new TypeStack(fnsig, locals,code,module);
+        ArrayList<Instruction> insts = getInsts(ts,localfn.getName(),fnsig);
+        OpCode lastop = insts.get(insts.size() - 1).getOpCode();
+        if (lastop != OpCode.END) {
+            // "END opcode expected"
+            throw new ParseException(M200,"lastop = %s",lastop);
+        }
+        Op op = ControlOp.getInstance(OpCode.RETURN, null);
+        Instruction inst = op.getInstruction(ts);
+        inst = ts.changeControl(inst);
+        insts.add(inst);
+        localfn.setLocalFunction(fnnum, locals, insts, fnsig);//, ts.getMaxsize());
+        Logger.getGlobal().fine(String.format("function body %d has %d locals and %d insts",
+                i, locals.length,insts.size()));
+    }
+    
 }

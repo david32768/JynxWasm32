@@ -1,6 +1,7 @@
 package parse;
 
 import java.util.logging.Logger;
+
 import wasm.Instruction;
 
 public class Global implements Kind {
@@ -71,40 +72,41 @@ public class Global implements Kind {
     }
     
 
+    /*
+    ### Global section
+
+    The encoding of the [Global section](Modules.md#global-section):
+
+    | Field   | Type               | Description                          |
+    | ------- | ------------------ | ------------------------------------ |
+    | count   | `varuint32`        | count of global variable entries     |
+    | globals | `global_variable*` | global variables, as described below |
+
+    */
     public static void parse(WasmModule module, Section section)  {
-        /*
-        ### Global section
+        ParseMethods.parseSectionVector(section, i->module, Global::parseGlobal);
+    }
 
-        The encoding of the [Global section](Modules.md#global-section):
+    /*
+    #### Global Entry
 
-        | Field   | Type               | Description                          |
-        | ------- | ------------------ | ------------------------------------ |
-        | count   | `varuint32`        | count of global variable entries     |
-        | globals | `global_variable*` | global variables, as described below |
+    Each `global_variable` declares a single global variable of a given type, mutability
+    and with the given initializer.
 
-        */
-        int count = section.vecsz();
-        for (int i = 0;i < count;i++) {
-            /*
-            #### Global Entry
+    | Field      | Type         | Description                      |
+    | ---------- | ------------ | -------------------------------- |
+    | type       | `value_type` | type of the variables            |
+    | mutability | `varuint1`   | `0` if immutable, `1` if mutable |
+    | init       | `init_expr`  | the initial value of the global  |
 
-            Each `global_variable` declares a single global variable of a given type, mutability
-            and with the given initializer.
-
-            | Field      | Type         | Description                      |
-            | ---------- | ------------ | -------------------------------- |
-            | type       | `value_type` | type of the variables            |
-            | mutability | `varuint1`   | `0` if immutable, `1` if mutable |
-            | init       | `init_expr`  | the initial value of the global  |
-
-            */
-            ValueType type = section.getValueType();
-            boolean mutable = section.getMutability();
-            ConstantExpression constexpr = ConstantExpression.parseConstantExpression(module, section);
-            KindName kn = new KindName(KindType.Global,module.getName(),null,Status.PRIVATE,module.globidx());
-            Global global = new Global(type, mutable,constexpr,kn);
-            Logger.getGlobal().fine(String.format("global %d = %s",i,global));
-            module.addGlobal(global);
-        }
+    */
+    public static void parseGlobal(WasmModule module, Section section, int i)  {
+        ValueType type = section.getValueType();
+        boolean mutable = section.getMutability();
+        ConstantExpression constexpr = ConstantExpression.parseConstantExpression(module, section);
+        KindName kn = new KindName(KindType.Global,module.getName(),null,Status.PRIVATE,module.globidx());
+        Global global = new Global(type, mutable,constexpr,kn);
+        Logger.getGlobal().fine(String.format("global %d = %s",i,global));
+        module.addGlobal(global);
     }
 }
