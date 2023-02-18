@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-public class Expr {
+class Expr {
 
     private final Expr parent;
     private final StringBuilder before;
@@ -31,7 +31,7 @@ public class Expr {
         return new Expr(parent,comments);
     }
 
-    public String comments() {
+    String comments() {
         return comments;
     }
     
@@ -44,7 +44,7 @@ public class Expr {
         children.add(child);
     }
 
-    public Expr getChild(int index) {
+    Expr getChild(int index) {
         return children.get(index);
     }
     
@@ -60,11 +60,11 @@ public class Expr {
         return parent;
     }
     
-    public String before() {
+    String before() {
         return before.toString().trim();
     }
     
-    public String after() {
+    String after() {
         return after.toString().trim();
     }
     
@@ -78,7 +78,7 @@ public class Expr {
         this.after.append(str);
     }
     
-    public String print() {
+    String print() {
         return print(0);
     }
     
@@ -105,7 +105,7 @@ public class Expr {
         return sb.toString();
     }
 
-    public boolean contains(TestSection section) {
+    boolean contains(TestSection section) {
         String str = before();
         Optional<TestSection> optsect = TestSection.getStartInstance(str);
         boolean contains = optsect.isPresent() && optsect.get() == section;
@@ -128,7 +128,7 @@ public class Expr {
     }
 
 	// TODO (;x;) comment    
-    public static List<Expr> parse(List<String> lines) {
+    static List<Expr> parse(List<String> lines) {
         String chars = lines.stream()
                 .map(String::trim)
                 .map(Expr::removeComments)

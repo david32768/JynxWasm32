@@ -15,7 +15,7 @@ enum TestSection {
     MODULE_BINARY,
     ASSERT_UNLINKABLE,
 
-    MODULE, // after any MODULE_x
+    MODULE, // place after any MODULE_x
     ;
 
     boolean starts(String str) {
@@ -23,7 +23,7 @@ enum TestSection {
         return uc_str.startsWith(name());
     }
     
-    public static Optional<TestSection> getInstance(String section) {
+    static Optional<TestSection> getInstance(String section) {
         try {
             return Optional.of(valueOf(section));
         } catch ( IllegalArgumentException iaex) {
@@ -31,7 +31,7 @@ enum TestSection {
         }
     }
 
-    public static Optional<TestSection> getStartInstance(String section) {
+    static Optional<TestSection> getStartInstance(String section) {
         return Stream.of(values())
                 .filter(sec-> sec.starts(section)) 
                 .findAny();

@@ -1,6 +1,9 @@
 # JynxWasm32
 
-  This reads a wasm file and produces a jynx file (JynxMacro library required to assemble)
+  This (2JYNX) reads a wasm file and produces a jynx file (JynxMacro library required to assemble).
+It can also just parse a wasm file (PARSE).
+It can be tested (TESTPARSE) with a w3c-1.0 testsuite file that contains 'module binary'.
+
 
 The supported extensions to the mvp are
 
@@ -12,26 +15,37 @@ The supported extensions to the mvp are
 
 ## Usage
 
-Usage: (version 0.1.1)
+Usage: (version 0.1.3)
 
 ```
-    2jynx {options} wasm-file
-        convert to a jynx file
+	2JYNX [options] wasm-file
 ```
 
-Options are:
+  Options are:
 
-*	--DEBUG changes log-level to FINEST
+*	--LEVEL            changes log-level
 *	--CLASS_NAME_AS_IS stops changing first character of class name to upper case
-*	--COMMENT add wasm ops as comments to Jynx output
-*	--PACKAGE add package name
-*	--NAME class_name  ; default is module-name else filename without the .wasm extension
+*	--COMMENT          add wasm ops as comments to Jynx output
+*	--NAME             class_name ; default name is module-name else filename without the .wasm extension
+*	--PACKAGE          add package name
 
 ```
-    testparse [--LEVEL <log-level>] wast-file
-        run w3c-1.0 testsuite file that contains 'module binary'
-	e.g. [binary.wast in w3c-1.0 branch](https://github.com/WebAssembly/spec/blob/w3c-1.0/test/core/binary.wast)
+	TESTPARSE [options] wast-file
+		run w3c-1.0 testsuite file that contains 'module binary'
+		e.g. [binary.wast in w3c-1.0 branch](https://github.com/WebAssembly/spec/blob/w3c-1.0/test/core/binary.wast)
 ```
+
+  Options are:
+
+*	--LEVEL            changes log-level
+
+```
+	PARSE [options] wasm-file
+```
+
+  Options are:
+
+*	--LEVEL            changes log-level
 
 ## Notice
 

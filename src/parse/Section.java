@@ -3,6 +3,7 @@ package parse;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.Charset;
+import static parse.Reason.M107;
 
 import static parse.Reason.M205;
 import static parse.Reason.M206;
@@ -211,9 +212,14 @@ public final class Section {
     }
 
     public int vecsz() {
-        return getU32();
+        int count = getU32();
+        if (count > remaining()) { // sanity check
+            // "unexpected end of section or function"
+            throw new ParseException(M107,"vector size = %d but remaining = %d",count,remaining());
+        }
+        return count;
     }
-
+    
     // 5.1.1
     public int typeidx() {
         return getU32();

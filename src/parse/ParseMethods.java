@@ -12,7 +12,7 @@ import static parse.Reason.M209;
 import static parse.ValueType.V00;
 
 public class ParseMethods {
-    
+
     public static <T> T parseSectionVector(Section section,
             IntFunction<T> checkcount, ParseFunction<T> parsefn) {
         int count = section.vecsz();

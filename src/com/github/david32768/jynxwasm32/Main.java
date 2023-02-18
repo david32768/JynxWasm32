@@ -5,56 +5,32 @@ import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
+import java.util.Map;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.logging.SimpleFormatter;
 import java.util.Optional;
-import java.util.stream.Stream;
 
 import jynxwasm32.JavaName;
 import jynxwasm32.JynxModule;
+import main.Action;
+import main.Option;
 import parse.WasmModule;
 import util.BasicFormatter;
 import utility.Binary;
 
 public class Main {
 
-    private enum Option {
-        DEBUG("changes log-level to FINEST"),
-        CLASS_NAME_AS_IS("stops changing first character of class name to upper case"),
-        COMMENT("add wasm ops as comments to Jynx output"),
-        NAME("class_name ; default name is module-name else filename without the .wasm extension"),
-        PACKAGE("add package name"),
-        ;
-        
-        private final String msg;
-
-        private Option(String msg) {
-            this.msg = msg;
-        }
-
-        private static Optional<Option> getInstance(String arg) {
-            return Stream.of(values())
-                    .filter(opt -> arg.equals("--" + opt.name()))
-                    .findAny();
-        }
-    }
-    
-    private static final String VERSION = "0.1.2";
+    private static final String VERSION = "0.1.3";
     
     private static void usage() {
         System.err.format("\nUsage: (version %s)\n",VERSION);
-        System.err.println("    2jynx {options} wasm-file");
-        System.err.println("        convert to a jynx file\n");
-        System.err.println("    Options are:\n");
-        for (Option opt: Option.values()) {
-            System.err.format("        --%s %s%n", opt,opt.msg);
+        for (Action action:Action.values()) {
+            System.err.format("\n%s [options] %s-file\n\n",action,action.extension());
+            System.err.println("  Options are:\n");
+            Option.print(action);
         }
-        System.err.println("\n    testparse [--LEVEL <log-level>] wast-file");
-        System.err.println("        run w3c-1.0 testsuite file that contains 'module binary'\n");
         System.exit(1);
     }
     
@@ -65,79 +41,73 @@ public class Main {
         ha.setFormatter(new BasicFormatter());
         root.addHandler(ha);
 
-        if (args.length < 1) {
+        if (args.length < 2) {
             usage();
             return;
         }
-
-        if (args[0].equals("testparse") || args[0].equals("testsuite")) {
-            args = Arrays.copyOfRange(args, 1, args.length);
-            testSuite(args);
-            return;
-        } else if (args[0].equals("2jynx")) {
-            args = Arrays.copyOfRange(args, 1, args.length);
-        }
-        
-        if (args.length < 1) {
+        Optional<Action> optaction = Action.getInstance(args[0]);
+        if (!optaction.isPresent()) {
+            System.err.format("unknown action %s%n",args[0]);
             usage();
             return;
         }
-
-        String file = args[args.length - 1];
-        if (!file.endsWith(".wasm")) {
-            System.err.format("file suffix is not .wasm - '%s'%n", file);
-            System.exit(1);
+        Action action = optaction.get();
+        Map<Option,String> options = Option.getOptions(action, args);
+        String lastarg = args[args.length - 1];
+        if (!lastarg.endsWith("." + action.extension())) {
+            System.err.format("file %s has invalid extension - expected .%s%n",lastarg,action.extension());
+            usage();
             return;
         }
-
+        Level loglevel = Level.WARNING;
+        String level = options.get(Option.LEVEL);
+        if (level != null) {
+            try {
+                loglevel = Level.parse(level.toUpperCase());
+            } catch (IllegalArgumentException ex) {
+                System.err.println();
+                System.err.println(ex.toString());
+                usage();
+                System.exit(1);
+            }
+        }
+        root.setLevel(loglevel);
+        ha.setLevel(loglevel);
+        switch(action) {
+            case _2JYNX:
+                toJynx(options, lastarg);
+                break;
+            case _PARSE:
+                parse(options, lastarg);
+                break;
+            case _TESTPARSE:
+                Binary.testFile(Paths.get(lastarg));
+                break;
+            default:
+                throw new EnumConstantNotPresentException(action.getClass(), action.name());
+        }
+    }
+    
+    private static void parse(Map<Option,String> options, String file)  throws IOException {
+        Path path = Paths.get(file);
+        String fname = path.getFileName().toString();
+        fname = fname.substring(0, fname.length() - 5);
+        ByteBuffer stream = ByteBuffer.wrap(Files.readAllBytes(path));
+        WasmModule module = WasmModule.getModule(fname,stream);
+    }
+    
+    private static void toJynx(Map<Option,String> options, String file)  throws IOException {
         Path path = Paths.get(file);
         String fname = path.getFileName().toString();
         fname = fname.substring(0, fname.length() - 5);
 
-        JavaName javaname = new JavaName(true);
-        boolean comments = false;
-        Optional<String> name = Optional.empty();
-        String pkg = null;
-        for(int i = 0; i < args.length - 1; ++i) {
-            String argi = args[i].toUpperCase().replace('_', '-');
-            Optional<Option> opt = Option.getInstance(argi);
-            if (!opt.isPresent()) {
-                usage();
-                System.exit(1);
-            }
-            switch(opt.get()) {
-                case DEBUG:
-                    ha.setLevel(Level.FINEST);
-                    ha.setFormatter(new SimpleFormatter());
-                    root.setLevel(Level.FINEST);
-                    break;
-                case CLASS_NAME_AS_IS:
-                    javaname = new JavaName(false);
-                    break;
-                case COMMENT:
-                    comments = true;
-                    break;
-                case NAME:
-                    if (i < args.length - 2) {
-                        ++i;
-                        name = Optional.of(args[i]);
-                    }
-                    break;
-                case PACKAGE:
-                    if (i < args.length - 2) {
-                        ++i;
-                        pkg = args[i];
-                    }
-                    break;
-                default:
-                    System.err.format("unknown option '%s'%n",argi);
-                    usage();
-                    return;
-            }
-        }
+        JavaName javaname = new JavaName(!options.containsKey(Option.CLASS_NAME_AS_IS));
+        boolean comments = options.get(Option.COMMENT) != null;
+        String name = options.get(Option.NAME);
+        String pkg = options.get(Option.PACKAGE);
 
-        if (name.isPresent() && !javaname.isClassName(name.get())) {
-            System.err.format("%s is not a valid Java class name%n", name.get());
+        if (name != null  && !javaname.isClassName(name)) {
+            System.err.format("%s is not a valid Java class name%n", name);
             usage();
             return;
         }
@@ -150,47 +120,14 @@ public class Main {
 
         ByteBuffer stream = ByteBuffer.wrap(Files.readAllBytes(path));
         WasmModule module = WasmModule.getModule(fname,stream);
-        String classname = name.orElse(javaname.ownerName(module.getName()));
+        if (name == null) {
+            name = javaname.ownerName(module.getName());
+        }
         if (pkg != null) {
-            classname = pkg + '/' + classname;
+            name = pkg + '/' + name;
         }
-        JynxModule.output(module,file,classname,javaname,comments);
+        JynxModule.output(module,file,name,javaname,comments);
 
-    }
-    
-    private static void testSuite(String[] args)  throws IOException {
-        int argct = args.length;
-        if (argct == 0) {
-            usage();
-            System.exit(0);
-        }
-        Level loglevel = Level.WARNING;
-        String file = args[0];
-        switch(argct) {
-            case 3:
-                if (args[0].toUpperCase().equals("--LEVEL")) {
-                    try {
-                        loglevel = Level.parse(args[1].toUpperCase());
-                    } catch (IllegalArgumentException ex) {
-                        System.err.println();
-                        System.err.println(ex.toString());
-                        usage();
-                        System.exit(1);
-                    }
-                    file = args[2];
-                } else {
-                    usage();
-                    System.exit(1);
-                }
-                break;
-            case 1:
-                break;
-            default:
-                usage();
-                System.exit(1);
-        }
-        Logger.getGlobal().setLevel(loglevel);
-        Binary.testFile(Paths.get(file));
     }
     
 }
