@@ -115,25 +115,77 @@ class Expr {
         return contains;
     }
 
-    private static String removeComments(String line) {
-        assert !line.contains("\r") && !line.contains("\n");
-        int index = line.indexOf(";;");
-        if (index > 0) {
-            return line.substring(0,index).trim();
-        } else if (index == 0) {
-            return "\r" + line + "\n";
-        } else {
-            return line;
+    private static String removeComments(List<String> lines) {
+        StringBuilder sb = new StringBuilder();
+        int level = 0;
+        for (String line:lines) {
+            line = line.trim();
+            if (level == 0) {
+                if (line.startsWith(";;")) {
+                    sb.append('\r').append(line).append('\n');
+                    continue;
+                }
+            }
+            boolean linecomment = false;
+            boolean quote = false;
+            StringBuilder linesb = new StringBuilder();
+            for (int i = 0; i < line.length(); ++i) {
+                char c = line.charAt(i);
+                assert c != '\r' &&c != '\n';
+                char next = i + 1 == line.length()?'\n':line.charAt(i + 1);
+                switch (c) {
+                    case '\"':
+                        if (level == 0) {
+                            quote = !quote;
+                        }
+                        break;
+                    case '\\':
+                        if (quote && next != '\n') {
+                            linesb.append(c);
+                            ++i;
+                            c = next;
+                        }
+                        break;
+                    case ' ':
+                        if (!quote && next == ' ') {
+                            ++i;
+                        }
+                        break;
+                    case '(':
+                        if (!quote && next == ';') {
+                            ++i;
+                            ++level;
+                            continue;
+                        }
+                        break;
+                    case ';':
+                        if (!quote && next == ')') {
+                            ++i;
+                            --level;
+                            assert level >=0:line;
+                            continue;
+                        }
+                        linecomment = !quote && level == 0 && next == ';';
+                        break;
+                }
+                if (linecomment) {
+                    break;
+                }
+                if (level == 0) {
+                    linesb.append(c);
+                }
+            }
+            assert !quote:line;
+            String line2 = linesb.toString().trim();
+            if (!line2.isEmpty()) {
+                sb.append(line2).append(' ');
+            }
         }
+        return sb.toString();
     }
-
-	// TODO (;x;) comment    
+    
     static List<Expr> parse(List<String> lines) {
-        String chars = lines.stream()
-                .map(String::trim)
-                .map(Expr::removeComments)
-                .filter(x->!x.isEmpty())
-                .collect(Collectors.joining(" "));
+        String chars = removeComments(lines);
         List<Expr> parents = new ArrayList<>();
         Expr current = null;
         char lastc = ' ';
