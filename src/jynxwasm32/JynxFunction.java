@@ -90,7 +90,7 @@ public class JynxFunction {
             if (local.isParm()) {
                 String name = local.getDebugName();
                 if (name != null) {
-                    pw.format(".parameter %d %s%n",local.getNumber(),name);
+                    pw.format(".parameter %d final %s%n",local.getNumber(),name);
                 }
                 continue;
             }

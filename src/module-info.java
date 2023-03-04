@@ -2,7 +2,7 @@ module com.github.david32768.jynxwasm32 {
 	requires java.logging;
 	exports com.github.david32768.jynxwasm32;
 }
-// javac -p asmmods -d build\classes module-info.java
+// javac -d build\classes module-info.java
 // jar --create --file JynxWasm32.jar --main-class com.github.david32768.jynxwasm32.Main --module-version 0.1 -C build\classes\ .
 /*
 .version V11
