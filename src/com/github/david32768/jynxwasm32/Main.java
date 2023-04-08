@@ -22,7 +22,7 @@ import utility.Binary;
 
 public class Main {
 
-    private static final String VERSION = "0.1.4";
+    private static final String VERSION = "0.1.6";
     
     private static void usage() {
         System.err.format("\nUsage: (version %s)\n",VERSION);
@@ -96,6 +96,8 @@ public class Main {
         WasmModule module = WasmModule.getModule(fname,stream);
     }
     
+    private static String DEFAULT_PACKAGE = "wasirun";
+    
     private static void toJynx(Map<Option,String> options, String file)  throws IOException {
         Path path = Paths.get(file);
         String fname = path.getFileName().toString();
@@ -112,7 +114,11 @@ public class Main {
             return;
         }
 
-        if (pkg != null && !javaname.isPackageName(pkg)) {
+        if (pkg == null) {
+            pkg = DEFAULT_PACKAGE;
+        }
+        
+        if (!pkg.isEmpty() && !javaname.isPackageName(pkg)) {
             System.err.format("%s is not a valid Java package name%n", pkg);
             usage();
             return;
@@ -123,10 +129,11 @@ public class Main {
         if (name == null) {
             name = javaname.ownerName(module.getName());
         }
-        if (pkg != null) {
+        if (!pkg.isEmpty()) {
             name = pkg + '/' + name;
         }
-        JynxModule.output(module,file,name,javaname,comments);
+        String start = options.get(Option.START);
+        JynxModule.output(module, file, name, javaname, start, comments);
 
     }
     

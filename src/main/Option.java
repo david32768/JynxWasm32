@@ -10,11 +10,12 @@ import static main.Action.*;
 
 public enum Option {
     
-    LEVEL("changes log-level",_2JYNX,_TESTPARSE,_PARSE),
-    CLASS_NAME_AS_IS(false,"stops changing first character of class name to upper case",_2JYNX),
+    LEVEL("changes log-level", _2JYNX, _TESTPARSE, _PARSE),
+    CLASS_NAME_AS_IS(false,"stops changing first character of class name to upper case", _2JYNX),
     COMMENT(false,"add wasm ops as comments to Jynx output",_2JYNX),
-    NAME("class_name ; default name is module-name else filename without the .wasm extension",_2JYNX),
-    PACKAGE("add package name",_2JYNX),
+    NAME("class_name ; default name is module-name else filename without the .wasm extension", _2JYNX),
+    PACKAGE("package name ; default is 'wasirun'", _2JYNX),
+    START("set start method if wasm start not set. default is '_start' if it exists", _2JYNX),
     ;
 
     private final boolean hasString;

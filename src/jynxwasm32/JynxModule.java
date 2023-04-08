@@ -32,28 +32,49 @@ public class JynxModule {
     private final String fileName;
     private final JavaName javaName;
     private final boolean comments;
+    private final String startMethod;
 
     private JynxModule(WasmModule module, PrintWriter pw,
-            String filename, String classname,  JavaName javaname, boolean comments) {
+            String filename, String classname,  JavaName javaname,
+            String startmethod, boolean comments) {
         this.module = module;
         this.pw = pw;
         this.javaName = javaname;
         this.className = classname;
         this.fileName = filename;
         this.comments = comments;
+        this.startMethod = startmethod;
     }
     
-    
     public static void output(WasmModule module, String file, 
-            String classname, JavaName javaname, boolean comments) throws IOException {
+            String classname, JavaName javaname, String startmethod, boolean comments) throws IOException {
         try (PrintWriter pw = new PrintWriter(System.out)) {
-            JynxModule jm = new JynxModule(module, pw,file,classname,javaname,comments);
+            JynxModule jm = new JynxModule(module, pw,file,classname,javaname,startmethod, comments);
             jm.print();
         }
     }
 
     private void print() {
-        pw.format(".version V1_8 SYMBOLIC_LOCAL GENERATE_LINE_NUMBERS CHECK_REFERENCES%n");
+        WasmFunction start = module.getStart();
+        if (start == null) {
+            String startmethod = startMethod == null?"_start":startMethod;
+            for (WasmFunction function:module.getFunctions()) {
+                if (function instanceof LocalFunction) {
+                    LocalFunction localfn = (LocalFunction)function;
+                    String name = javaName.simpleName(localfn);
+                    if (name.equals(startmethod)) {
+                        start = localfn;
+                        break;
+                    }
+                }
+            }
+            if (startMethod != null && start == null) {
+                String msg = String.format("start method %s not found", startMethod);
+                Logger.getGlobal().warning(msg);
+            }
+        }
+        
+        pw.format(".version V1_8 SYMBOLIC_LOCAL GENERATE_LINE_NUMBERS%n");
         pw.println(".macrolib wasm32MVP");
         Path srcpath = Paths.get(fileName);
         pw.format(".source %s%n",srcpath.getFileName());
@@ -74,6 +95,7 @@ public class JynxModule {
         if (module.getMemories().size() > 1) {
             throw new UnsupportedOperationException();  // method name for memory should include table number
         }
+        String storage = null;
         for (Memory memory: module.getMemories()) {
             if (memory.getMemoryNum() == 0 && !memory.getKindName().getFieldName().equals("memory")) {
                 Logger.getGlobal().warning("memory 0 is not exported as 'memory' so cannot use wasi methods");
@@ -81,6 +103,9 @@ public class JynxModule {
             pw.format(".field private final static %s Lwasmrun/Storage;%n",
                 memory.getDefaultName());
             if (memory.isExported()) {
+                if (memory.getMemoryNum() == 0) {
+                    storage = javaName.simpleName(memory);
+                }
                 pw.format(".field public final static %s Lwasmrun/Storage;%n",
                     javaName.simpleName(memory));
             }
@@ -89,6 +114,7 @@ public class JynxModule {
             defineGlobalField(global);
         }
         pw.println();
+
         pw.println(".method static <clinit>()V");
         pw.println("; initialise own globals");
         String spacer = "  ";
@@ -127,7 +153,6 @@ public class JynxModule {
             }
             pw.flush();
         }
-        WasmFunction start = module.getStart();
         if (start != null) {
             JynxFunction jynx = new JynxFunction(pw,javaName,comments);
             jynx.printStart(start);
