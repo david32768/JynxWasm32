@@ -27,9 +27,9 @@ public enum OpType {
     MEMLOAD(MemoryInstruction::memload,MemoryOp::getInstance),
     MEMSTORE(MemoryInstruction::memstore,MemoryOp::getInstance),
     CONTROL(ControlInstruction::control,ControlOp::getInstance),
-    COMPAREIF(null,null),
-    COMPAREBRIF(null,null),
-    COMPARESELECT(null,null),
+    COMPARE_IF(null,null),
+    COMPARE_BRIF(null,null),
+    COMPARE_SELECT(null,null),
     BRANCH_TABLE(BrTableInstruction::brtable,BrTableOp::getInstance),
     BRANCH(BranchInstruction::branch,BranchOp::getInstance),
     ;

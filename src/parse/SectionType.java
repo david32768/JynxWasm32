@@ -1,14 +1,13 @@
 package parse;
 
 import java.util.function.BiConsumer;
-import java.util.logging.Logger;
 
 import static parse.Reason.M211;
 
 public enum SectionType {
 
     // sections must be in this order apart from section 0
-    st_custom(0, SectionType::parseCustom),
+    st_custom(0, Custom::parseCustom),
     st_type(1, WasmModule::setTypes),
     st_import(2, WasmModule::setImports),
     st_function(3, ParseMethods::parseFnSig),
@@ -55,22 +54,4 @@ public enum SectionType {
         throw new ParseException(M211,"section id = %d",idx);
     }
 
-    private static void parseCustom(WasmModule module, Section section) {
-        String name = section.getName();
-        if (name.equals("name")) {
-            Logger.getGlobal().fine(String.format("name = %s", name));
-            DebugNameType.parseNames(module, section);
-            return;
-        }
-        if (name.equals("dylink")) {
-            Logger.getGlobal().fine(String.format("name = %s", name));
-            ParseMethods.parseDylink(module, section);
-            return;
-        }
-        if (name.startsWith(".debug")) {
-            Logger.getGlobal().fine(String.format("name = %s; ignored", name));
-        } else {
-            Logger.getGlobal().info(String.format("name = %s; ignored", name));
-        }
-    }
 }

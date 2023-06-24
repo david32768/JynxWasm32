@@ -42,27 +42,6 @@ public class ParseMethods {
         return obj;
     }
 
-   public static void parseDylink(WasmModule module, Section section) {
-        if (module.getLastSection() != SectionType.st_custom) {
-            throw new IllegalStateException();
-        }
-        int memsz = section.getU32();
-        int memalgn = section.getU32();
-        int tabsz = section.getU32();
-        int tabalgn = section.getU32();
-        Logger.getGlobal().fine(String.format("memsz = %d memalgn = %d tabsz = %d tabalgn = %d",
-                memsz,memalgn,tabsz,tabalgn));
-        int count = section.vecsz();
-        if (count == 0) {
-            Logger.getGlobal().info("no dynamic libraries");
-            return;
-        }
-        for (int i = 0; i < count;++i) {
-            String libname = section.getName();
-            Logger.getGlobal().fine(String.format("libray %d %s", i, libname));
-        }
-    }
-    
     public static FnType[] parseTypes(WasmModule module,Section section) {
         return parseSectionVector(section,FnType[]::new,ParseMethods::parseType);
     }

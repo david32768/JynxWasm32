@@ -11,6 +11,7 @@ public class TypeStack {
 
     private final ValueTypeStack vtstack = new ValueTypeStack();
     private final LIFOStack<BlockEntry> blocks = new LIFOStack<>();
+    private final FnType fntype;
     private final ValueType vtfnr;
     private final Local[] locals;
     private final Section code;
@@ -19,6 +20,7 @@ public class TypeStack {
     private BlockEntry currentBlock;
 
     public TypeStack(FnType fntype, Local[] locals,Section code, WasmModule module) {
+        this.fntype = fntype;
         this.vtfnr = fntype.getRtype();
         this.locals = locals;
         this.code = code;
@@ -39,6 +41,10 @@ public class TypeStack {
 
     public Local getLocal(int index) {
         return locals[index];
+    }
+
+    public FnType FnType() {
+        return fntype;
     }
 
     public ValueType peek() {

@@ -4,7 +4,7 @@ import java.io.PrintWriter;
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Deque;
-import java.util.HashMap;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
@@ -25,6 +25,7 @@ import parse.WasmModule;
 import wasm.BrTableInstruction;
 import wasm.BranchInstruction;
 import wasm.ControlInstruction;
+import wasm.Feature;
 import wasm.Instruction;
 import wasm.MemoryInstruction;
 import wasm.ObjectInstruction;
@@ -35,25 +36,21 @@ import wasm.UnreachableInstruction;
 
 public class JynxFunction {
     
-    public enum JvmOp {
-        lookupswitch,
-        ;
-    }
-
-    private final static Map<OpCode,Integer> OPTS = new HashMap<>();
-    
-    private static int ct = 0;
+    private final static EnumMap<Feature,Integer> FEATURES = new EnumMap<>(Feature.class);
     
     public static void printStats() {
-        int changect = 0;
-        for (Map.Entry<OpCode,Integer> me:OPTS.entrySet()) {
-            String msg = String.format("%s optimised = %d",me.getKey(),me.getValue());
-            Logger.getGlobal().info(msg);
-            changect += me.getValue();
+        StringBuilder sb = new StringBuilder();
+        sb.append("features used:\n");
+        int ct = 0;
+        String tabs = "      ";
+        for (Map.Entry<Feature,Integer> me : FEATURES.entrySet()) {
+            Feature feature = me.getKey();
+            Integer count = me.getValue();
+            sb.append(tabs).append(feature).append(" ").append(count).append('\n');
+            ct += count;
         }
-        String msg = String.format("total optimised = %d",changect);
-        Logger.getGlobal().info(msg);
-        msg = String.format("total instructions = %d",ct);
+        Logger.getGlobal().info(sb.toString());
+        String msg = String.format("total instructions = %s%n", ct);
         Logger.getGlobal().info(msg);
     }
     
@@ -162,18 +159,15 @@ public class JynxFunction {
                 if (!needUnwind(unwind)) {
                     result.removeLast();
                     inst = BranchInstruction.combine(last, inst);
-                    OPTS.compute(OpCode.BR_IF, (k,v)->v == null?0:++v);
                 }
                 break;
             case SELECT:
                 result.removeLast();
                 inst = SimpleInstruction.combine(last,inst);
-                OPTS.compute(OpCode.SELECT, (k,v)->v == null?0:++v);
                 break;
             case IF:
                 result.removeLast();
                 inst = ControlInstruction.combine(last, inst);
-                OPTS.compute(OpCode.IF, (k,v)->v == null?0:++v);
                 break;
         }
         return inst;
@@ -188,14 +182,13 @@ public class JynxFunction {
                 inst = compareOptimise(inst, last, result);
             }
             result.addLast(inst);
-            ++ct;
         }
         return result;
     }
     
     public int printInsts(List<Instruction> instlist, String field_name) {
         Deque<Instruction>  insts = optimize(instlist);
-        pw.println("  BLOCK");
+        pw.format("  %s%n", OpCode.BLOCK);
         ValueTypeStack vts = new ValueTypeStack();
         for (Instruction inst : insts) {
             char[] spaces = new char[inst.getLevel() * 2];
@@ -229,6 +222,7 @@ public class JynxFunction {
         OpType optype = opcode.getOpType();
         String compound = optype.isCompound()?"(*)":"";
         String comment = comments?String.format(" ; %s%s ; %s",compound, inst,stackchange):"";
+        FEATURES.compute(opcode.getFeature(), (k,v) -> v == null?1:v + 1);
         switch(optype) {
             case VARIABLE:
                 variable(spacer, inst, comment);
@@ -237,11 +231,11 @@ public class JynxFunction {
             case MEMSTORE:
                 memory(spacer, inst, comment);
                 break;
-            case COMPAREIF:
+            case COMPARE_IF:
             case CONTROL:
                 control(spacer, inst, comment);
                 break;
-            case COMPAREBRIF:
+            case COMPARE_BRIF:
             case BRANCH:
                 branch(spacer, inst, comment);
                 break;
@@ -318,7 +312,7 @@ public class JynxFunction {
                 }
                 break;
             default:
-                if (opcode.getOpType() != OpType.COMPAREIF) {
+                if (opcode.getOpType() != OpType.COMPARE_IF) {
                     throw new AssertionError();
                 }
                 pw.format("%s  %s%s%n", spacer,opcode,comment);
@@ -367,7 +361,7 @@ public class JynxFunction {
                 }
                 break;
             default:
-                if (inst.getOpCode().getOpType() != OpType.COMPAREBRIF){
+                if (inst.getOpCode().getOpType() != OpType.COMPARE_BRIF){
                     throw new AssertionError();
                 }
                 pw.format("%s  %s %d%s%n",spacer,inst.getOpCode(), level,comment);

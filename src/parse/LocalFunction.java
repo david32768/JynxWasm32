@@ -81,88 +81,31 @@ public class LocalFunction implements WasmFunction {
         kindName = kindName.changeNames(kindName.getModuleName(), name);
     }
 
-    private static void logUnreachable(String fnname, OpCode opcode) {
-        if (opcode == OpCode.UNREACHABLE) {
-            Logger.getGlobal().fine(String.format("%s: unreachable instruction (%s) dropped",
-                fnname,opcode.name()));
-        } else {
-            Logger.getGlobal().warning(String.format("%s: unreachable instruction (%s) dropped",
-                fnname,opcode.name()));
-        }
-    }
-    
-    private static ArrayList<Instruction> getInsts(TypeStack ts, String fnname, FnType fnsig) {
+    private static ArrayList<Instruction> getInsts(TypeStack ts, String fnname) {
         Section code = ts.getCode();
         ArrayList<Instruction> insts = new ArrayList<>();
-        boolean unreachable = false;
-        int unreachablelevel = 0;
+        InstructionChecker checker = new InstructionChecker(ts, fnname);
         while (code.hasRemaining()) {
             Op op = code.getop();
-            OpCode opcode = op.getOpCode();
-            Instruction comment = UnreachableInstruction.unreachable(op, ts);
             try {
-                switch(opcode) {
-                    case END :
-                        if (unreachable) {
-                            if (unreachablelevel != 0) {
-                                --unreachablelevel;
-                                insts.add(comment);
-                                logUnreachable(fnname, opcode);
-                                continue;
-                            }
-                        } else {
-                            ts.updateFallThroughToEnd();
-                        }
-                        break;
-                    case ELSE:
-                        if (unreachable) {
-                            if (unreachablelevel == 0) {
-                                break;
-                            }
-                            insts.add(comment);
-                            logUnreachable(fnname, opcode);
-                            continue;
-                        } else {
-                            ts.updateFallThroughToEnd();
-                        }
-                        break;
-                    case UNREACHABLE:
-                        if (unreachable) {
-                                insts.add(comment);
-                                logUnreachable(fnname, opcode);
-                            continue;
-                        }
-                        break;
-                    case BLOCK: case IF: case LOOP:
-                        if (unreachable) {
-                            ++unreachablelevel;
-                                insts.add(comment);
-                                logUnreachable(fnname, opcode);
-                            continue;
-                        }
-                        break;
-                    case RETURN:    
-                    default:
-                        if (unreachable) {
-                                insts.add(comment);
-                                logUnreachable(fnname, opcode);
-                            continue;
-                        }
-                        break;
-                }
-                Instruction inst = op.getInstruction(ts);
-                inst = ts.changeControl(inst);
-                unreachable = opcode.isTransfer()
-                    || opcode == OpCode.END && !((ControlInstruction)inst).getBlock().isEndReachable();
-                unreachablelevel = 0;
+                Instruction inst = checker.from(op);
                 insts.add(inst);
             } catch (Exception ex) {
                 Logger.getGlobal().info(ex.toString());
-                Logger.getGlobal().info(printInsts(insts,fnname,fnsig));
-                Logger.getGlobal().log(Level.INFO, String.format("failed inst = %s%n",opcode), ex);
+                Logger.getGlobal().info(printInsts(insts, fnname, ts.FnType()));
+                Logger.getGlobal().log(Level.INFO, String.format("failed inst = %s%n",op.getOpCode()), ex);
                 throw ex;
             }
         }
+        OpCode lastop = insts.get(insts.size() - 1).getOpCode();
+        if (lastop != OpCode.END) {
+            // "END opcode expected"
+            throw new ParseException(M200,"lastop = %s",lastop);
+        }
+        Op op = ControlOp.getInstance(OpCode.RETURN, null);
+        Instruction inst = op.getInstruction(ts);
+        inst = ts.changeControl(inst);
+        insts.add(inst);
         return insts;
     }
 
@@ -239,18 +182,9 @@ public class LocalFunction implements WasmFunction {
         Section code = Section.getSubSection(section);
         FnType fnsig = localfn.getFnType(); //module.getSignature(i);
         Local[] locals = Local.parse(code, localfn);
-        TypeStack ts = new TypeStack(fnsig, locals,code,module);
-        ArrayList<Instruction> insts = getInsts(ts,localfn.getName(),fnsig);
-        OpCode lastop = insts.get(insts.size() - 1).getOpCode();
-        if (lastop != OpCode.END) {
-            // "END opcode expected"
-            throw new ParseException(M200,"lastop = %s",lastop);
-        }
-        Op op = ControlOp.getInstance(OpCode.RETURN, null);
-        Instruction inst = op.getInstruction(ts);
-        inst = ts.changeControl(inst);
-        insts.add(inst);
-        localfn.setLocalFunction(fnnum, locals, insts, fnsig);//, ts.getMaxsize());
+        TypeStack ts = new TypeStack(fnsig, locals , code, module);
+        ArrayList<Instruction> insts = getInsts(ts, localfn.getName());
+        localfn.setLocalFunction(fnnum, locals, insts, fnsig);
         Logger.getGlobal().fine(String.format("function body %d has %d locals and %d insts",
                 i, locals.length,insts.size()));
     }

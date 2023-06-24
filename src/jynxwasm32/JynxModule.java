@@ -32,36 +32,37 @@ public class JynxModule {
     private final String fileName;
     private final JavaName javaName;
     private final boolean comments;
-    private final String startMethod;
+    private final WasmFunction startFn;
 
     private JynxModule(WasmModule module, PrintWriter pw,
             String filename, String classname,  JavaName javaname,
-            String startmethod, boolean comments) {
+            WasmFunction startfn, boolean comments) {
         this.module = module;
         this.pw = pw;
         this.javaName = javaname;
         this.className = classname;
         this.fileName = filename;
         this.comments = comments;
-        this.startMethod = startmethod;
+        this.startFn = startfn;
     }
     
     public static void output(WasmModule module, String file, 
             String classname, JavaName javaname, String startmethod, boolean comments) throws IOException {
         try (PrintWriter pw = new PrintWriter(System.out)) {
-            JynxModule jm = new JynxModule(module, pw,file,classname,javaname,startmethod, comments);
+            WasmFunction wasmfn = getStart(module, javaname, startmethod);
+            JynxModule jm = new JynxModule(module, pw,file, classname, javaname, wasmfn, comments);
             jm.print();
         }
     }
 
-    private void print() {
+    private static WasmFunction getStart(WasmModule module, JavaName javaname, String startMethod) {
         WasmFunction start = module.getStart();
         if (start == null) {
             String startmethod = startMethod == null?"_start":startMethod;
             for (WasmFunction function:module.getFunctions()) {
                 if (function instanceof LocalFunction) {
                     LocalFunction localfn = (LocalFunction)function;
-                    String name = javaName.simpleName(localfn);
+                    String name = javaname.simpleName(localfn);
                     if (name.equals(startmethod)) {
                         start = localfn;
                         break;
@@ -73,7 +74,10 @@ public class JynxModule {
                 Logger.getGlobal().warning(msg);
             }
         }
-        
+        return start;
+    }
+    
+    private void print() {
         pw.format(".version V1_8 SYMBOLIC_LOCAL GENERATE_LINE_NUMBERS%n");
         pw.println(".macrolib wasm32MVP");
         Path srcpath = Paths.get(fileName);
@@ -81,8 +85,31 @@ public class JynxModule {
         pw.format(".class public %s%n",className);
         pw.format(".super java/lang/Object%n");
         pw.println();
+        
+        defineFields();
+
+        printClassInitMethod();
+
+        for (WasmFunction function:module.getFunctions()) {
+            if (function instanceof LocalFunction) {
+                LocalFunction localfn = (LocalFunction)function;
+                pw.println();
+                JynxFunction jynx = new JynxFunction(pw,javaName,comments);
+                jynx.printJVMInsts(module, localfn);
+            }
+            pw.flush();
+        }
+        if (startFn != null) {
+            JynxFunction jynx = new JynxFunction(pw,javaName,comments);
+            jynx.printStart(startFn);
+        }
+        pw.flush();
+        JynxFunction.printStats();
+    }
+
+    private void defineFields() {
         if (module.getTables().size() > 1) {
-            throw new UnsupportedOperationException();  // method name for table should include table number
+            throw new UnsupportedOperationException("At most one table in MVP");
         }
         for (Table table: module.getTables()) {
             pw.format(".field private final static %s Lwasmrun/Table;%n",
@@ -93,9 +120,8 @@ public class JynxModule {
             }
         }
         if (module.getMemories().size() > 1) {
-            throw new UnsupportedOperationException();  // method name for memory should include table number
+            throw new UnsupportedOperationException("At most one storage in MVP");
         }
-        String storage = null;
         for (Memory memory: module.getMemories()) {
             if (memory.getMemoryNum() == 0 && !memory.getKindName().getFieldName().equals("memory")) {
                 Logger.getGlobal().warning("memory 0 is not exported as 'memory' so cannot use wasi methods");
@@ -103,18 +129,29 @@ public class JynxModule {
             pw.format(".field private final static %s Lwasmrun/Storage;%n",
                 memory.getDefaultName());
             if (memory.isExported()) {
-                if (memory.getMemoryNum() == 0) {
-                    storage = javaName.simpleName(memory);
-                }
                 pw.format(".field public final static %s Lwasmrun/Storage;%n",
                     javaName.simpleName(memory));
             }
         }
+        
         for (Global global:module.getGlobals()) {
             defineGlobalField(global);
         }
         pw.println();
+    }
+    
+    private void defineGlobalField(Global global) {
+        if (!global.isImported()) {
+            String name = javaName.simpleName(global);
+            String access = global.isPrivate()?"private":"public";
+            String mutable = global.isFinal()?" final":"";
+            String init = global.isFinal() && !global.usesInitGlobal()?"":" ; ";
+            pw.format(".field %s%s static %s %c %s= %s%n",
+                    access,mutable,name,global.getType().getJvmtype(),init,global.getValue());
+        }
+    }
 
+    private void printClassInitMethod() {
         pw.println(".method static <clinit>()V");
         pw.println("; initialise own globals");
         String spacer = "  ";
@@ -133,46 +170,20 @@ public class JynxModule {
         pw.print(spacer);
         pw.println(OpCode.RETURN);
         pw.println(".end_method");
-        outputGlobalFields(module.getGlobals());
+        orintGlobalFieldsMethod(module.getGlobals());
         int tablenum = 0;
         for (Table table:module.getTables()) {
-            outputTableMethod(table,tablenum);
+            printTableMethod(table,tablenum);
             ++tablenum;
         }
         int memnum = 0;
         for (Memory memory:module.getMemories()) {
-            outputMemory(memory,memnum);
+            printMemoryMethod(memory,memnum);
             ++memnum;
         }
-        for (WasmFunction function:module.getFunctions()) {
-            if (function instanceof LocalFunction) {
-                LocalFunction localfn = (LocalFunction)function;
-                pw.println();
-                JynxFunction jynx = new JynxFunction(pw,javaName,comments);
-                jynx.printJVMInsts(module, localfn);
-            }
-            pw.flush();
-        }
-        if (start != null) {
-            JynxFunction jynx = new JynxFunction(pw,javaName,comments);
-            jynx.printStart(start);
-        }
-        pw.flush();
-        JynxFunction.printStats();
     }
-
-    private void defineGlobalField(Global global) {
-        if (!global.isImported()) {
-            String name = javaName.simpleName(global);
-            String access = global.isPrivate()?"private":"public";
-            String mutable = global.isFinal()?" final":"";
-            String init = global.isFinal() && !global.usesInitGlobal()?"":" ; ";
-            pw.format(".field %s%s static %s %c %s= %s%n",
-                    access,mutable,name,global.getType().getJvmtype(),init,global.getValue());
-        }
-    }
-
-    private void outputGlobalFields(List<Global> globals) {
+    
+    private void orintGlobalFieldsMethod(List<Global> globals) {
         JynxFunction jynx = new JynxFunction(pw,javaName,comments);
         pw.println();
         pw.format(".method private static __initGlobals()V%n");
@@ -193,34 +204,114 @@ public class JynxModule {
         pw.println(".end_method");
     }
 
+    private static final int MAXPARM = 32;
+    
+    private void printTableMethod(Table table, int num) {
+        JynxFunction jynx = new JynxFunction(pw,javaName,comments);
+        pw.println();
+        String spacer = "  ";
+        pw.format(".method private static __init%s()V%n",table.getDefaultName());
+        if (table.isImported()) {
+            pw.print(spacer);
+            pw.format("%s %s%n",JynxOpCode.TABLE_GLOBAL_GET,javaName.of(table));
+            pw.print(spacer);
+            pw.format("%s %s%n",JynxOpCode.TABLE_GLOBAL_SET,table.getDefaultName());
+            pw.print(spacer);
+            pw.format("%s%n",OpCode.RETURN);
+            pw.println(".end_method");
+            return;
+        }
+        pw.print(spacer);
+        pw.format("%s%n",JynxOpCode.TABLE_NEW);
+        pw.print(spacer);
+        pw.format("%s %s%n",JynxOpCode.TABLE_GLOBAL_SET,table.getDefaultName());
+        pw.print(spacer);
+        pw.format("%s %s%n",JynxOpCode.TABLE_GLOBAL_GET,table.getDefaultName());
+
+        for (TableElement element:table.getElements()) {
+            printTableElement(jynx,element,spacer);
+        }
+
+        pw.print(spacer);
+        if (table.isExported()) {
+            pw.format("%s %s%n",JynxOpCode.TABLE_GLOBAL_SET,javaName.simpleName(table));
+        } else {
+            pw.format("%s%n",OpCode.DROP);
+        }
+        pw.print(spacer);
+        pw.format("%s%n",OpCode.RETURN);
+        pw.println(".end_method");
+    }
+
+    private void printTableElement(JynxFunction jynx,TableElement element, String spacer) {
+        boolean started = false;
+        int added = 0;
+        Instruction offsetinst = element.getConstExpr().getConstInst();
+        int i = 0;
+        for (WasmFunction fn:element.getFunctions()) {
+            if (fn == null) {
+                if (started) {
+                    pw.print(spacer);
+                    pw.println(".end_array");
+                    started = false;
+                    added = 0;
+                }
+            } else {
+                if (!started) {
+                    started = true;
+                    jynx.printInst(offsetinst, "", "");
+                    pw.print(spacer);
+                    pw.format("%s %d .array ; start_index%n", JynxOpCode.ADD_ENTRY, i);
+                }
+                FnType fntype = fn.getFnType();
+                String name = javaName.localName(fn);
+                String method = String.format("ST:%s%s",name,fntype.wasmString() );
+                pw.print(spacer);
+                pw.print(spacer);
+                pw.format("%s ; %d%n",method,i);
+                ++added;
+                if (added%MAXPARM == MAXPARM - 1) {
+                    pw.print(spacer);
+                    pw.println(".end_array");
+                    started = false;
+                    added = 0;
+                }
+            }
+            ++i;
+        }
+        if (started) {
+            pw.print(spacer);
+            pw.println(".end_array");
+        }
+    }
+    
     private static int MAX_SEGMENT = 720; // NOTEPAD will wrap long lines into 1024 character chunks
     
-    private void outputMemory(Memory memory, int num) {
+    private void printMemoryMethod(Memory memory, int num) {
         JynxFunction jynx = new JynxFunction(pw,javaName,comments);
         pw.println();
         pw.format(".method private static __init%s()V%n",memory.getDefaultName());
         String spacer = "  ";
         Limits limits = memory.getLimits();
         int maximum = limits.hasMaximum()?limits.getMaximum():0;
-        String type = "MEMORY";
         if (memory.isImported()) {
             pw.print(spacer);
             String name = javaName.of(memory);
-            pw.format("%s_%s %s%n",type,OpCode.GLOBAL_GET,name);
+            pw.format("%s %s%n",JynxOpCode.MEMORY_GLOBAL_GET,name);
             pw.print(spacer);
-            pw.format("%s_%s %s%n",type,OpCode.GLOBAL_SET,memory.getDefaultName());
+            pw.format("%s %s%n",JynxOpCode.MEMORY_GLOBAL_SET,memory.getDefaultName());
             pw.print(spacer);
-            pw.format("%s_CHECK %d %d %d%n",type,limits.getInitial(),maximum,num);
+            pw.format("%s %d %d %d%n",JynxOpCode.MEMORY_CHECK,limits.getInitial(),maximum,num);
         } else {
             pw.print(spacer);
-            pw.format("%s_NEW %d %d%n",type,limits.getInitial(),maximum);
+            pw.format("%s %d %d%n",JynxOpCode.MEMORY_NEW,limits.getInitial(),maximum);
             pw.print(spacer);
-            pw.format("%s_%s %s%n",type,OpCode.GLOBAL_SET,memory.getDefaultName());
+            pw.format("%s %s%n",JynxOpCode.MEMORY_GLOBAL_SET,memory.getDefaultName());
             if (memory.isExported()) {
                 pw.print(spacer);
-                pw.format("%s_%s %s%n",type,OpCode.GLOBAL_GET,memory.getDefaultName());
+                pw.format("%s %s%n",JynxOpCode.MEMORY_GLOBAL_GET,memory.getDefaultName());
                 pw.print(spacer);
-                pw.format("%s_%s %s%n",type,OpCode.GLOBAL_SET,javaName.simpleName(memory));
+                pw.format("%s %s%n",JynxOpCode.MEMORY_GLOBAL_SET,javaName.simpleName(memory));
             }
         }
         for (Data_segment ds:memory.getData()) {
@@ -251,91 +342,9 @@ public class JynxModule {
         String spacer = "  ";
         jynx.printInst(constinst, "", "");
         pw.print(spacer);
-        pw.format("STRING_CONST \"%s\"%n", datastr);
+        pw.format("%s \"%s\"%n", JynxOpCode.STRING_CONST, datastr);
         pw.print(spacer);
-        pw.format("BASE64_STORE %d +%d%n",num,dataoffset);
-    }
-    
-    private static final int MAXPARM = 32;
-    
-    private void outputTableMethod(Table table, int num) {
-        JynxFunction jynx = new JynxFunction(pw,javaName,comments);
-        pw.println();
-        String type = "TABLE";
-        String spacer = "  ";
-        pw.format(".method private static __init%s()V%n",table.getDefaultName());
-        if (table.isImported()) {
-            pw.print(spacer);
-            pw.format("%s_%s %s%n",type,OpCode.GLOBAL_GET,javaName.of(table));
-            pw.print(spacer);
-            pw.format("%s_%s %s%n",type,OpCode.GLOBAL_SET,table.getDefaultName());
-            pw.print(spacer);
-            pw.format("%s%n",OpCode.RETURN);
-            pw.println(".end_method");
-            return;
-        }
-        pw.print(spacer);
-        pw.format("%s_NEW%n",type);
-        pw.print(spacer);
-        pw.format("%s_%s %s%n",type,OpCode.GLOBAL_SET,table.getDefaultName());
-        pw.print(spacer);
-        pw.format("%s_%s %s%n",type,OpCode.GLOBAL_GET,table.getDefaultName());
-
-        for (TableElement element:table.getElements()) {
-            printTableElement(jynx,element,spacer);
-        }
-
-        pw.print(spacer);
-        pw.format("%s%n",OpCode.DROP);
-        if (table.isExported()) {
-            pw.print(spacer);
-            pw.format("COPY_%s %s %s %n",type,table.getDefaultName(),javaName.simpleName(table));
-        }
-        pw.print(spacer);
-        pw.format("%s%n",OpCode.RETURN);
-        pw.println(".end_method");
-    }
-
-    private void printTableElement(JynxFunction jynx,TableElement element, String spacer) {
-        boolean started = false;
-        int added = 0;
-        Instruction offsetinst = element.getConstExpr().getConstInst();
-        int i = 0;
-        for (WasmFunction fn:element.getFunctions()) {
-            if (fn == null) {
-                if (started) {
-                    pw.print(spacer);
-                    pw.println(".end_array");
-                    started = false;
-                    added = 0;
-                }
-            } else {
-                if (!started) {
-                    started = true;
-                    jynx.printInst(offsetinst, "", "");
-                    pw.print(spacer);
-                    pw.format("ADD_ENTRY %d .array ; start_index%n",i);
-                }
-                FnType fntype = fn.getFnType();
-                String name = javaName.localName(fn);
-                String method = String.format("ST:%s%s",name,fntype.wasmString() );
-                pw.print(spacer);
-                pw.print(spacer);
-                pw.format("%s ; %d%n",method,i);
-                ++added;
-                if (added%MAXPARM == MAXPARM - 1) {
-                    pw.print(spacer);
-                    pw.println(".end_array");
-                    started = false;
-                    added = 0;
-                }
-            }
-            ++i;
-        }
-        if (started) {
-            pw.print(spacer);
-            pw.println(".end_array");
-        }
+        pw.format("%s %d +%d%n", JynxOpCode.BASE64_STORE, num, dataoffset);
     }
     
     public static String getPrefix(ValueType vt) {
