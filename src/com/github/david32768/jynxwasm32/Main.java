@@ -22,7 +22,7 @@ import utility.Binary;
 
 public class Main {
 
-    private static final String VERSION = "0.1.6";
+    private static final String VERSION = "0.1.7";
     
     private static void usage() {
         System.err.format("\nUsage: (version %s)\n",VERSION);

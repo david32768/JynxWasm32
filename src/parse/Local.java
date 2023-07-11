@@ -11,22 +11,12 @@ public class Local implements CanHaveDebugName {
     private final int relnum;
     private final boolean parm;
     
-    private Number value;
     private String name;
     
     private Local(ValueType type, int relnum, boolean parm) {
         this.type = type;
         this.relnum = relnum;
         this.parm = parm;
-        this.value = type.getZero();
-    }
-
-    private Local(ValueType type, int relnum) {
-        this(type,relnum,false);
-    }
-
-    public Number getValue() {
-        return value;
     }
 
     public ValueType getType() {
@@ -64,12 +54,6 @@ public class Local implements CanHaveDebugName {
         return String.format("%s %d %s",type,relnum,parm?"parameter":"");
     }
 
-    public Number setValue(Number value) {
-        if (!type.isInstance(value)) throw new RuntimeException("Local type mismatch");
-        this.value = value;
-        return value;
-    }
-    
     
 /*
     #### Local Entry
@@ -84,7 +68,7 @@ It is legal to have several entries with the same type.
 
     */    
     
-    private static int MAXLOCALS = 2*Short.MAX_VALUE + 1;
+    private static final int MAXLOCALS = 2*Short.MAX_VALUE + 1;
     
     public static Local[] parse(Section section, LocalFunction fn) {
         // parameters are parms 0 ->
@@ -118,7 +102,7 @@ It is legal to have several entries with the same type.
             int count = lvt.count();
             ValueType type = lvt.vt();
             for (int j = 0; j < count;j++) {
-                Local local = new Local(type,relnum);
+                Local local = new Local(type,relnum,false);
                 result.add(local);
                 ++relnum;
             }            

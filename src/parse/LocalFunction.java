@@ -8,10 +8,8 @@ import static parse.Reason.M100;
 
 import static parse.Reason.M200;
 
-import wasm.ControlInstruction;
 import wasm.Instruction;
 import wasm.OpCode;
-import wasm.UnreachableInstruction;
 
 public class LocalFunction implements WasmFunction {
 
@@ -102,10 +100,6 @@ public class LocalFunction implements WasmFunction {
             // "END opcode expected"
             throw new ParseException(M200,"lastop = %s",lastop);
         }
-        Op op = ControlOp.getInstance(OpCode.RETURN, null);
-        Instruction inst = op.getInstruction(ts);
-        inst = ts.changeControl(inst);
-        insts.add(inst);
         return insts;
     }
 

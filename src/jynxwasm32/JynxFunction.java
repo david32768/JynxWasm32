@@ -80,10 +80,7 @@ public class JynxFunction {
         int maxlocal = 0;
         for (Local local:fn.getLocals()) {
             ValueType vt = local.getType();
-            ++maxlocal;
-            if (vt == I64 || vt == F64) {
-                ++maxlocal;
-            }
+            maxlocal += vt.getStackSize();
             if (local.isParm()) {
                 String name = local.getDebugName();
                 if (name != null) {
@@ -91,37 +88,21 @@ public class JynxFunction {
                 }
                 continue;
             }
-            OpCode opcode;
-            switch(vt) {
-                case I32:
-                    opcode = OpCode.I32_CONST;
-                    break;
-                case I64:
-                    opcode = OpCode.I64_CONST;
-                    break;
-                case F32:
-                    opcode = OpCode.F32_CONST;
-                    break;
-                case F64:
-                    opcode = OpCode.F64_CONST;
-                    break;
-                default:
-                    throw new AssertionError();
-            }
-           pw.format("  %s 0%n",opcode);
-           pw.format("  %s %s%n",OpCode.LOCAL_SET,local.getName());
+           pw.format("  %s_%s %s%n", vt, JynxOpCode.LOCAL_INIT, local.getName());
         }
-        int maxstack = printInsts(fn.getInsts(), fn.getFieldName());
-            // + 2 to allow use of one temp variable when generating jynx which may be double or long
+        // + 2 to allow use of one temp variable when generating jynx which may be double or long
         maxlocal += 2;
+        Deque<Instruction>  insts = optimize(fn.getInsts());
+        int maxstack = printInsts(insts, fn.getFieldName(), fn.getFnType().getRtype());
+        // + 4 for extended ops
+        maxstack += 4;
         pw.format(".limit locals %d%n",maxlocal);
         pw.format(".limit stack %d%n",maxstack);
-            // + 4 for ExtendedOps
         pw.println(".end_method");
         pw.flush();
     }
 
-    public static String num2string(Number num) {
+    private static String num2string(Number num) {
         String numstr;
         if (num instanceof Long) {
             numstr = ((Long) num).toString() + 'L';
@@ -186,8 +167,7 @@ public class JynxFunction {
         return result;
     }
     
-    public int printInsts(List<Instruction> instlist, String field_name) {
-        Deque<Instruction>  insts = optimize(instlist);
+    private int printInsts(Deque<Instruction>  insts, String field_name, ValueType rt) {
         pw.format("  %s%n", OpCode.BLOCK);
         ValueTypeStack vts = new ValueTypeStack();
         for (Instruction inst : insts) {
@@ -208,13 +188,16 @@ public class JynxFunction {
             String stackchange = String.format("%s -> %s",before,after);
             printInst(inst, spacer, stackchange);
         }
+
+        ifReachable("", OpCode.RETURN, "");
+        vts.adjustStack(FnType.consume(rt));
+
         pw.flush();
         if (!vts.addedEmpty()) {
             String msg = "stack not empty at end";
             throw new IllegalStateException(msg);
         }
-            // + 2 to allow use of one temp variable when generating jynx which may be double or long
-        return vts.getMaxsz() + 4;
+        return vts.getMaxsz();
     }
     
     public void printInst(Instruction inst, String spacer,String stackchange) {
@@ -263,10 +246,6 @@ public class JynxFunction {
         }
     }
     
-    public static String pushLocal(ValueType vt, int index) {
-        return String.format("%s %d",OpCode.LOCAL_GET,index);
-    }
-    
     private void memory(String spacer,Instruction inst, String comment) {
         MemoryInstruction meminst = (MemoryInstruction)inst;
         int offset = meminst.getOffset();
@@ -276,19 +255,21 @@ public class JynxFunction {
         pw.format("%s  %s %d %s%d%s%n",spacer,inst.getOpCode(),memnum,plus,offset,comment);
     }
     
+    private void ifReachable(String spacer, OpCode opcode, String comment) {
+        pw.println(spacer + "  .if reachable");
+        pw.format("%s  %s%s%n", spacer, opcode, comment);
+        pw.println(spacer + "  .end_if");
+    }
+    
     private void unreachable(String spacer,Instruction inst, String comment) {
         if (inst instanceof UnreachableInstruction) {
             pw.format("%s  ; %s%n", spacer,inst);
         } else {
-            pw.println(spacer + "  .if reachable");
-            pw.format("%s  %s%s%n", spacer,inst.getOpCode(),comment);
-            pw.println(spacer + "  .end_if");
+            ifReachable(spacer, inst.getOpCode(), comment);
         }
     }
     
     private void control(String spacer,Instruction inst, String comment) {
-        FnType fntype = inst.getFnType();
-        ValueType vt1 = fntype.getType(1);
         OpCode opcode = inst.getOpCode();
         switch(opcode) {
             case UNREACHABLE:
@@ -299,17 +280,8 @@ public class JynxFunction {
             case IF:
             case ELSE:
             case END:
-                pw.format("%s  %s%s%n", spacer,opcode,comment);
-                break;
             case RETURN:
-                boolean end = inst.getLevel() == 0;
-                if (end) {
-                    pw.println(spacer + "  .if reachable");
-                }
-                pw.format("%s  %s%s%n",spacer,opcode,comment);
-                if (end) {
-                    pw.println(spacer + "  .end_if");
-                }
+                pw.format("%s  %s%s%n", spacer,opcode,comment);
                 break;
             default:
                 if (opcode.getOpType() != OpType.COMPARE_IF) {
@@ -334,7 +306,7 @@ public class JynxFunction {
     }
 
     private void branch(String spacer,Instruction inst, String comment) {
-       BranchInstruction brinst = (BranchInstruction)inst;
+        BranchInstruction brinst = (BranchInstruction)inst;
         BranchTarget target = brinst.getTarget();
         FnType unwind = target.getUnwind();
         int level = target.getBr2level();

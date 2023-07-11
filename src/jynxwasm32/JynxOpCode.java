@@ -14,6 +14,8 @@ public enum JynxOpCode {
     TABLE_GLOBAL_GET,
     TABLE_GLOBAL_SET,
     ADD_ENTRY,
+
+    LOCAL_INIT,
     
     LOG,
     ;

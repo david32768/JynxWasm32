@@ -140,6 +140,22 @@ public class JynxModule {
         pw.println();
     }
     
+    private char getJvmBaseType(Global global) {
+        switch(global.getType().getBase()) {
+            case I32:
+                return 'I';
+            case I64:
+                return 'J';
+            case F32:
+                return 'F';
+            case F64:
+                return 'D';
+            default:
+                throw new AssertionError();
+        }
+    }
+
+    
     private void defineGlobalField(Global global) {
         if (!global.isImported()) {
             String name = javaName.simpleName(global);
@@ -147,7 +163,7 @@ public class JynxModule {
             String mutable = global.isFinal()?" final":"";
             String init = global.isFinal() && !global.usesInitGlobal()?"":" ; ";
             pw.format(".field %s%s static %s %c %s= %s%n",
-                    access,mutable,name,global.getType().getJvmtype(),init,global.getValue());
+                    access, mutable, name, getJvmBaseType(global), init, global.getValue());
         }
     }
 
