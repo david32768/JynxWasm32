@@ -2,6 +2,8 @@ package parse;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import static parse.Reason.M100;
@@ -13,7 +15,7 @@ import wasm.OpCode;
 
 public class LocalFunction implements WasmFunction {
 
-    private ArrayList<Instruction> insts;
+    private List<Instruction> insts;
     private final FnType fntype;
 
     private Local[] locals;
@@ -26,7 +28,7 @@ public class LocalFunction implements WasmFunction {
         this.found = false;
     }
 
-    public ArrayList<Instruction> getInsts() {
+    public List<Instruction> getInsts() {
         return insts;
     }
 
@@ -45,9 +47,9 @@ public class LocalFunction implements WasmFunction {
     }
 
     private void setLocalFunction(int fnnum, Local[] locals,
-            ArrayList<Instruction> insts, FnType fntype) { //, int maxstacksz) {
+            List<Instruction> insts, FnType fntype) {
         this.locals = locals;
-        this.insts = insts;
+        this.insts = Collections.unmodifiableList(insts);
         if (fnnum != kindName.getNumber()) {
             String msg = String.format("set fnnum %d is different from original %d",fnnum,kindName.getNumber());
             throw new IllegalStateException(msg);

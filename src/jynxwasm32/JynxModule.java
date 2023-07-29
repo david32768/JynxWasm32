@@ -33,7 +33,8 @@ public class JynxModule {
     private final JavaName javaName;
     private final boolean comments;
     private final WasmFunction startFn;
-
+    private final FunctionStats stats;
+    
     private JynxModule(WasmModule module, PrintWriter pw,
             String filename, String classname,  JavaName javaname,
             WasmFunction startfn, boolean comments) {
@@ -44,6 +45,7 @@ public class JynxModule {
         this.fileName = filename;
         this.comments = comments;
         this.startFn = startfn;
+        this.stats = new FunctionStats();
     }
     
     public static void output(WasmModule module, String file, 
@@ -94,17 +96,17 @@ public class JynxModule {
             if (function instanceof LocalFunction) {
                 LocalFunction localfn = (LocalFunction)function;
                 pw.println();
-                JynxFunction jynx = new JynxFunction(pw,javaName,comments);
+                JynxFunction jynx = new JynxFunction(pw,javaName,comments, stats);
                 jynx.printJVMInsts(module, localfn);
             }
             pw.flush();
         }
         if (startFn != null) {
-            JynxFunction jynx = new JynxFunction(pw,javaName,comments);
+            JynxFunction jynx = new JynxFunction(pw,javaName,comments, stats);
             jynx.printStart(startFn);
         }
         pw.flush();
-        JynxFunction.printStats();
+        stats.printStats();
     }
 
     private void defineFields() {
@@ -200,7 +202,7 @@ public class JynxModule {
     }
     
     private void orintGlobalFieldsMethod(List<Global> globals) {
-        JynxFunction jynx = new JynxFunction(pw,javaName,comments);
+        JynxFunction jynx = new JynxFunction(pw,javaName,comments,stats);
         pw.println();
         pw.format(".method private static __initGlobals()V%n");
         String spacer = "  ";
@@ -223,7 +225,7 @@ public class JynxModule {
     private static final int MAXPARM = 32;
     
     private void printTableMethod(Table table, int num) {
-        JynxFunction jynx = new JynxFunction(pw,javaName,comments);
+        JynxFunction jynx = new JynxFunction(pw,javaName,comments,stats);
         pw.println();
         String spacer = "  ";
         pw.format(".method private static __init%s()V%n",table.getDefaultName());
@@ -304,7 +306,7 @@ public class JynxModule {
     private static int MAX_SEGMENT = 720; // NOTEPAD will wrap long lines into 1024 character chunks
     
     private void printMemoryMethod(Memory memory, int num) {
-        JynxFunction jynx = new JynxFunction(pw,javaName,comments);
+        JynxFunction jynx = new JynxFunction(pw,javaName,comments,stats);
         pw.println();
         pw.format(".method private static __init%s()V%n",memory.getDefaultName());
         String spacer = "  ";

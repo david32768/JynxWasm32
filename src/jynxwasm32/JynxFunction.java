@@ -1,12 +1,9 @@
 package jynxwasm32;
 
 import java.io.PrintWriter;
-import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Deque;
-import java.util.EnumMap;
 import java.util.List;
-import java.util.Map;
 import java.util.logging.Logger;
 
 import static parse.ValueType.*;
@@ -25,7 +22,6 @@ import parse.WasmModule;
 import wasm.BrTableInstruction;
 import wasm.BranchInstruction;
 import wasm.ControlInstruction;
-import wasm.Feature;
 import wasm.Instruction;
 import wasm.MemoryInstruction;
 import wasm.ObjectInstruction;
@@ -36,32 +32,16 @@ import wasm.UnreachableInstruction;
 
 public class JynxFunction {
     
-    private final static EnumMap<Feature,Integer> FEATURES = new EnumMap<>(Feature.class);
-    
-    public static void printStats() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("features used:\n");
-        int ct = 0;
-        String tabs = "      ";
-        for (Map.Entry<Feature,Integer> me : FEATURES.entrySet()) {
-            Feature feature = me.getKey();
-            Integer count = me.getValue();
-            sb.append(tabs).append(feature).append(" ").append(count).append('\n');
-            ct += count;
-        }
-        Logger.getGlobal().info(sb.toString());
-        String msg = String.format("total instructions = %s%n", ct);
-        Logger.getGlobal().info(msg);
-    }
-    
     private final PrintWriter pw;
     private final JavaName javaName;
     private final boolean comments;
-
-    public JynxFunction(PrintWriter pw, JavaName javaName, boolean comments) {
+    private final FunctionStats stats;
+    
+    public JynxFunction(PrintWriter pw, JavaName javaName, boolean comments, FunctionStats stats) {
         this.pw = pw;
         this.javaName = javaName;
         this.comments = comments;
+        this.stats = stats;
     }
 
     public void printStart(WasmFunction start) {
@@ -86,13 +66,17 @@ public class JynxFunction {
                 if (name != null) {
                     pw.format(".parameter %d final %s%n",local.getNumber(),name);
                 }
-                continue;
+            } else {
+                JynxOpCode init = JynxOpCode.localInit(vt);
+                pw.format("  %s %s%n", init, local.getName());
             }
-           pw.format("  %s_%s %s%n", vt, JynxOpCode.LOCAL_INIT, local.getName());
         }
         // + 2 to allow use of one temp variable when generating jynx which may be double or long
         maxlocal += 2;
-        Deque<Instruction>  insts = optimize(fn.getInsts());
+        List<Instruction>  insts = optimize(fn.getInsts());
+
+        stats.addStats(fn.getFieldName(), insts);
+
         int maxstack = printInsts(insts, fn.getFieldName(), fn.getFnType().getRtype());
         // + 4 for extended ops
         maxstack += 4;
@@ -130,7 +114,8 @@ public class JynxFunction {
         return numstr;
     }
 
-    private Instruction compareOptimise(Instruction inst, Instruction last, Deque<Instruction>  result) {
+    private Instruction compareOptimise(Instruction inst, Instruction last) {
+        Instruction optlast = null;
         OpCode opcode = inst.getOpCode();
         switch(opcode) {
             case BR_IF:
@@ -138,36 +123,43 @@ public class JynxFunction {
                 BranchTarget target = brinst.getTarget();
                 FnType unwind = target.getUnwind();
                 if (!needUnwind(unwind)) {
-                    result.removeLast();
-                    inst = BranchInstruction.combine(last, inst);
+                    optlast = BranchInstruction.combine(last, inst);
                 }
                 break;
             case SELECT:
-                result.removeLast();
-                inst = SimpleInstruction.combine(last,inst);
+                optlast = SimpleInstruction.combine(last,inst);
                 break;
             case IF:
-                result.removeLast();
-                inst = ControlInstruction.combine(last, inst);
+                optlast = ControlInstruction.combine(last, inst);
                 break;
         }
-        return inst;
+        return optlast;
     }
     
-    private Deque<Instruction> optimize(List<Instruction> insts) {
-        Deque<Instruction>  result = new ArrayDeque<>();
+    private List<Instruction> optimize(List<Instruction> insts) {
+        List<Instruction>  result = new ArrayList<>();
+        Instruction last = null;
         for (Instruction inst:insts) {
-            Instruction last = result.peekLast();
-            OpType lasttype = last == null? null : last.getOpCode().getOpType();
-            if (lasttype == OpType.COMPARE) {
-                inst = compareOptimise(inst, last, result);
+            if (last != null) {
+                OpType lasttype = last.getOpCode().getOpType();
+                if (lasttype == OpType.COMPARE) {
+                    Instruction optlast = compareOptimise(inst, last);
+                    if (optlast != null) {
+                        last = optlast;
+                        inst = null;
+                    }
+                }
+                result.add(last);
             }
-            result.addLast(inst);
+            last = inst;
+        }
+        if (last != null) {
+            result.add(last);
         }
         return result;
     }
     
-    private int printInsts(Deque<Instruction>  insts, String field_name, ValueType rt) {
+    private int printInsts(List<Instruction>  insts, String field_name, ValueType rt) {
         pw.format("  %s%n", OpCode.BLOCK);
         ValueTypeStack vts = new ValueTypeStack();
         for (Instruction inst : insts) {
@@ -205,7 +197,6 @@ public class JynxFunction {
         OpType optype = opcode.getOpType();
         String compound = optype.isCompound()?"(*)":"";
         String comment = comments?String.format(" ; %s%s ; %s",compound, inst,stackchange):"";
-        FEATURES.compute(opcode.getFeature(), (k,v) -> v == null?1:v + 1);
         switch(optype) {
             case VARIABLE:
                 variable(spacer, inst, comment);
@@ -302,7 +293,7 @@ public class JynxFunction {
         if (!needUnwind(unwind)) {
             return;
         }
-        pw.format("%s  %s %s%n", spacer,"UNWIND",unwind.wasmString());
+        pw.format("%s  %s %s%n", spacer,JynxOpCode.UNWIND,unwind.wasmString());
     }
 
     private void branch(String spacer,Instruction inst, String comment) {
@@ -426,10 +417,14 @@ public class JynxFunction {
                         spacer,opcode,local.getName(),comment);
                 break;
             case GLOBAL_GET:
+                name = javaName.localName(((Global)obj));
+                JynxOpCode get = JynxOpCode.globalGet(varvt);
+                pw.format("%s  %s %s%s%n",spacer,get,name,comment);
+                break;
             case GLOBAL_SET:
                 name = javaName.localName(((Global)obj));
-                String prefix = JynxModule.getPrefix(varvt);
-                pw.format("%s  %s%s %s%s%n",spacer,prefix,opcode,name,comment);
+                JynxOpCode set = JynxOpCode.globalSet(varvt);
+                pw.format("%s  %s %s%s%n",spacer,set,name,comment);
                 break;
             case CALL:
                 WasmFunction called = (WasmFunction)obj;
