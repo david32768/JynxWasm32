@@ -214,7 +214,7 @@ public class JynxFunction {
                 branch(spacer, inst, comment);
                 break;
             case BRANCH_TABLE:
-                brtable(spacer, inst, comment);
+                brtablex(spacer, inst, comment);
                 break;
             case MEMFN:
                 long mems = inst.getImm1().longValue();
@@ -332,33 +332,33 @@ public class JynxFunction {
         }
     }
 
-    private void brtable(String spacer,Instruction inst, String comment) {
-        BrTableInstruction brinst = (BrTableInstruction)inst;
-        BranchTarget[] targets = brinst.getTargets();
-        boolean unwindsreq = false;
-        for (BranchTarget target:targets) {
-            if (needUnwind(target.getUnwind())) {
-                unwindsreq = true;
-                break;
-            }
-        }
-        if (unwindsreq) {
-            brtablex(spacer, inst, comment);
-            return;
-        }
-        BranchTarget deftarget = targets[targets.length - 1]; 
-        pw.format("%s  %s 0 default %d [",spacer,inst.getOpCode(),deftarget.getBr2level());
-        for (int i = 0; i < targets.length - 1;++i) {
-            BranchTarget target = targets[i];
-            if (i == 0){
-                pw.format(" %d",target.getBr2level());
-            } else {
-                pw.format(" , %d",target.getBr2level());
-            }
-        }
-        pw.println(" ]");
-    }
-
+//    private void brtable(String spacer,Instruction inst, String comment) {
+//        BrTableInstruction brinst = (BrTableInstruction)inst;
+//        BranchTarget[] targets = brinst.getTargets();
+//        boolean unwindsreq = false;
+//        for (BranchTarget target:targets) {
+//            if (needUnwind(target.getUnwind())) {
+//                unwindsreq = true;
+//                break;
+//            }
+//        }
+//        if (unwindsreq) {
+//            brtablex(spacer, inst, comment);
+//            return;
+//        }
+//        BranchTarget deftarget = targets[targets.length - 1]; 
+//        pw.format("%s  %s 0 default %d [",spacer,inst.getOpCode(),deftarget.getBr2level());
+//        for (int i = 0; i < targets.length - 1;++i) {
+//            BranchTarget target = targets[i];
+//            if (i == 0){
+//                pw.format(" %d",target.getBr2level());
+//            } else {
+//                pw.format(" , %d",target.getBr2level());
+//            }
+//        }
+//        pw.println(" ]");
+//    }
+//
     private static int labnum = 150;
     
     private void brtablex(String spacer,Instruction inst, String comment) {
@@ -369,7 +369,7 @@ public class JynxFunction {
         int label = labnum;
         labnum += targets.length;
         FnType defunwind = deftarget.getUnwind();
-        pw.format("%s  %s 0 default",spacer,OpCode.BR_TABLE);
+        pw.format("%s  %s default",spacer,OpCode.BR_TABLE);
         if (needUnwind(defunwind)) {
             int deflab = label + targets.length - 1;
             pw.format(" L%d .array%n",deflab);
@@ -379,21 +379,25 @@ public class JynxFunction {
         for (int i = 0; i < targets.length -1;++i) {
             int labi = label + i;
             BranchTarget target = targets[i];
-            FnType unwind = target.getUnwind();
-            if (needUnwind(unwind)) {
-                pw.format("%s  L%d ; %s%n",spacer,labi,unwind);
-            } else {
-                pw.format("%s  %d%n",spacer, target.getBr2level());
+            if (target.getBr2level() != deftarget.getBr2level()) {
+                FnType unwind = target.getUnwind();
+                if (needUnwind(unwind)) {
+                    pw.format("%s    %d -> L%d ; %s%n", spacer, i, labi, unwind);
+                } else {
+                    pw.format("%s    %d -> %d%n", spacer, i, target.getBr2level());
+                }
             }
         }
-        pw.format("%s.end_array%n",spacer);
+        pw.format("%s  .end_array%n",spacer);
         for (int i = 0; i < targets.length;++i) {
             BranchTarget target = targets[i];
-            FnType unwind = target.getUnwind();
-            if (needUnwind(unwind)) {
-                pw.format("%s  L%d:%n", spacer,(label + i));
-                brpop(spacer,unwind);
-                pw.format("%s  %s %d%n", spacer,OpCode.BR,target.getBr2level());
+            if (target.getBr2level() != deftarget.getBr2level()) {
+                FnType unwind = target.getUnwind();
+                if (needUnwind(unwind)) {
+                    pw.format("%s  L%d:%n", spacer,(label + i));
+                    brpop(spacer,unwind);
+                    pw.format("%s  %s %d%n", spacer,OpCode.BR,target.getBr2level());
+                }
             }
         }
     }
