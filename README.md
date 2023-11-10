@@ -32,8 +32,8 @@ Usage: (version 0.1.7.1)
 
 ```
 TESTPARSE [options] wast-file
-		run w3c-1.0 testsuite file that contains 'module binary'
-		e.g. [binary.wast in w3c-1.0 branch](https://github.com/WebAssembly/spec/blob/w3c-1.0/test/core/binary.wast)
+	run w3c-1.0 testsuite file that contains 'module binary'
+	e.g. [binary.wast in w3c-1.0 branch](https://github.com/WebAssembly/spec/blob/w3c-1.0/test/core/binary.wast)
 ```
 
   Options are:
