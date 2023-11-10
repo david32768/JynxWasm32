@@ -74,4 +74,11 @@ public enum Option {
                 .filter(opt->opt.actions.contains(action))
                 .forEach(opt->System.err.format("    --%-16s %s%n", opt, opt.msg));
     }
+    
+    private static final String VERSION = "0.1.7.1";
+
+    public static String version() {
+        return VERSION;
+    }
+    
 }

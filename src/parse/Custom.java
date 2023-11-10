@@ -4,6 +4,7 @@ import java.util.Optional;
 import java.util.function.BiConsumer;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
+import main.Option;
 
 public enum Custom {
 
@@ -41,11 +42,10 @@ public enum Custom {
 
     private final static String TAB = "      ";
     private final static char NL = '\n';
-    
+    private final static String ME = "processed-by JynxWasm32 " + Option.version();
+
 // https://github.com/WebAssembly/tool-conventions/blob/main/ProducersSection.md
    private static void parseProducers(WasmModule module, Section section) {
-       StringBuilder sb = new StringBuilder();
-       sb.append(PRODUCERS).append(NL);
        int fieldct = section.getU32();
        for (int i = 0 ; i < fieldct; ++i) {
            String fieldname = section.getName();
@@ -53,14 +53,18 @@ public enum Custom {
            for (int j = 0; j < entryct; ++j) {
                String entryname = section.getName();
                String entryversion = section.getName();
-               sb.append(TAB)
-                       .append(fieldname)
-                       .append(' ')
-                       .append(entryname)
-                       .append(' ')
-                       .append(entryversion)
-                       .append(NL);
+               String producer = String.format("%s %s %s", fieldname, entryname, entryversion);
+               module.addProducer(producer);
            }
+       }
+       module.addProducer(ME);
+
+       StringBuilder sb = new StringBuilder();
+       sb.append(PRODUCERS).append(NL);
+       for (String producer : module.getProducers()) {
+            sb.append(TAB)
+                    .append(producer)
+                    .append(NL);
        }
        Logger.getGlobal().config(sb.toString());
    }

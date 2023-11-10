@@ -176,7 +176,7 @@ public class LocalFunction implements WasmFunction {
         LocalFunction localfn = (LocalFunction)module.atfuncidx(fnnum);
         Logger.getGlobal().fine(String.format("Function %d %s", fnnum,localfn.getName()));
         Section code = Section.getSubSection(section);
-        FnType fnsig = localfn.getFnType(); //module.getSignature(i);
+        FnType fnsig = localfn.getFnType();
         Local[] locals = Local.parse(code, localfn);
         TypeStack ts = new TypeStack(fnsig, locals , code, module);
         ArrayList<Instruction> insts = getInsts(ts, localfn.getName());

@@ -25,6 +25,8 @@ public class WasmModule {
     private final ArrayList<Memory> memories = new ArrayList<>();
     private final ArrayList<Global> globals = new ArrayList<>();
 
+    private final ArrayList<String> producers = new ArrayList<>();
+    
     private WasmFunction startfn;
     private int impfns = 0;
     private int imptabs = 0;
@@ -66,6 +68,10 @@ public class WasmModule {
     public WasmFunction getStart() {
         return startfn;
     }
+
+    public ArrayList<String> getProducers() {
+        return producers;
+    }    
     
     public void setModname(String modname) {
         this.modname = modname;
@@ -177,6 +183,10 @@ public class WasmModule {
     }
 
 
+    public void addProducer(String producer) {
+        producers.add(producer);
+    }
+    
     public void setLastSection(SectionType type) {
         if (type != SectionType.st_custom) {
             if (type.compareTo(lastSection) <= 0) {

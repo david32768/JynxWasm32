@@ -87,6 +87,8 @@ public class JynxModule {
         pw.format(".class public %s%n",className);
         pw.format(".super java/lang/Object%n");
         pw.println();
+    
+        printProducers();
         
         defineFields();
 
@@ -109,6 +111,17 @@ public class JynxModule {
         stats.printStats();
     }
 
+    private void printProducers() {
+        pw.println(".annotation visible Lcom/github/david32768/jynxwasi/WasiProducer;");
+        pw.println("  producers [s = .array");
+        for (String producer: module.getProducers()) {
+            pw.println("    \"" + producer + "\"");
+        }
+        pw.println("  .end_array");
+        pw.println(".end_annotation");
+        pw.println();
+    }
+    
     private void defineFields() {
         if (module.getTables().size() > 1) {
             throw new UnsupportedOperationException("At most one table in MVP");

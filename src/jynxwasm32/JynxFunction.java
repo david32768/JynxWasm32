@@ -332,33 +332,6 @@ public class JynxFunction {
         }
     }
 
-//    private void brtable(String spacer,Instruction inst, String comment) {
-//        BrTableInstruction brinst = (BrTableInstruction)inst;
-//        BranchTarget[] targets = brinst.getTargets();
-//        boolean unwindsreq = false;
-//        for (BranchTarget target:targets) {
-//            if (needUnwind(target.getUnwind())) {
-//                unwindsreq = true;
-//                break;
-//            }
-//        }
-//        if (unwindsreq) {
-//            brtablex(spacer, inst, comment);
-//            return;
-//        }
-//        BranchTarget deftarget = targets[targets.length - 1]; 
-//        pw.format("%s  %s 0 default %d [",spacer,inst.getOpCode(),deftarget.getBr2level());
-//        for (int i = 0; i < targets.length - 1;++i) {
-//            BranchTarget target = targets[i];
-//            if (i == 0){
-//                pw.format(" %d",target.getBr2level());
-//            } else {
-//                pw.format(" , %d",target.getBr2level());
-//            }
-//        }
-//        pw.println(" ]");
-//    }
-//
     private static int labnum = 150;
     
     private void brtablex(String spacer,Instruction inst, String comment) {

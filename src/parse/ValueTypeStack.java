@@ -52,7 +52,7 @@ public class ValueTypeStack {
         if (stack.size() <= floor) {
             throw new StackStateException();
         }
-        ValueType result = stack.pop();//stackx.remove(stackx.size() - 1);
+        ValueType result = stack.pop();
         currentsz -= result.getStackSize();
         return result;
     }
@@ -61,7 +61,7 @@ public class ValueTypeStack {
         if (stack.size() <= floor) {
             throw new StackStateException();
         }
-        return stack.peek(); //stackx.get(stackx.size() - 1);
+        return stack.peek();
     }
     
     public ValueType peekIf(ValueType vt) {
@@ -73,13 +73,13 @@ public class ValueTypeStack {
         if (stack.size() <= floor + 1) {
             throw new StackStateException();
         }
-        return stack.peek(1);//stackx.get(stackx.size() - 2);
+        return stack.peek(1);
     }
 
     private void push(ValueType vt) {
         currentsz += vt.getStackSize();
         maxsz = Math.max(maxsz, currentsz);
-        stack.push(vt);//stackx.add(vt);
+        stack.push(vt);
     }
 
     private void pushIf(ValueType vt) {

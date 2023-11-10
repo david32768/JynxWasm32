@@ -22,10 +22,8 @@ import utility.Binary;
 
 public class Main {
 
-    private static final String VERSION = "0.1.7";
-    
     private static void usage() {
-        System.err.format("\nUsage: (version %s)\n",VERSION);
+        System.err.format("\nUsage: (version %s)\n", Option.version());
         for (Action action:Action.values()) {
             System.err.format("\n%s [options] %s-file\n\n",action,action.extension());
             System.err.println("  Options are:\n");
