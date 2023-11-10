@@ -15,10 +15,10 @@ The supported extensions to the mvp are
 
 ## Usage
 
-Usage: (version 0.1.3)
+Usage: (version 0.1.7.1)
 
 ```
-	2JYNX [options] wasm-file
+2JYNX [options] wasm-file
 ```
 
   Options are:
@@ -31,7 +31,7 @@ Usage: (version 0.1.3)
 *	--START            set start method if wasm start not set. default is '_start' if it exists
 
 ```
-	TESTPARSE [options] wast-file
+TESTPARSE [options] wast-file
 		run w3c-1.0 testsuite file that contains 'module binary'
 		e.g. [binary.wast in w3c-1.0 branch](https://github.com/WebAssembly/spec/blob/w3c-1.0/test/core/binary.wast)
 ```
@@ -41,7 +41,7 @@ Usage: (version 0.1.3)
 *	--LEVEL            changes log-level
 
 ```
-	PARSE [options] wasm-file
+PARSE [options] wasm-file
 ```
 
   Options are:
