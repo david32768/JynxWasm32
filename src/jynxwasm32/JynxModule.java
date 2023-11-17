@@ -201,7 +201,7 @@ public class JynxModule {
         pw.print(spacer);
         pw.println(OpCode.RETURN);
         pw.println(".end_method");
-        orintGlobalFieldsMethod(module.getGlobals());
+        printGlobalFieldsMethod(module.getGlobals());
         int tablenum = 0;
         for (Table table:module.getTables()) {
             printTableMethod(table,tablenum);
@@ -214,7 +214,7 @@ public class JynxModule {
         }
     }
     
-    private void orintGlobalFieldsMethod(List<Global> globals) {
+    private void printGlobalFieldsMethod(List<Global> globals) {
         JynxFunction jynx = new JynxFunction(pw,javaName,comments,stats);
         pw.println();
         pw.format(".method private static __initGlobals()V%n");

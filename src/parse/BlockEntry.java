@@ -12,22 +12,24 @@ public class BlockEntry {
     private boolean fallThroughToEnd;
     
     public BlockEntry(OpCode opcode,int stackptr, ValueType vt) {
+        this(opcode, stackptr, vt, false, false);
+    }
+
+    private BlockEntry(OpCode opcode, int stackptr, ValueType vt, boolean branchToEnd, boolean fallThroughToEnd) {
         this.opcode = opcode;
         this.stackptr = stackptr;
         this.vt = vt;
-        this.branchToEnd = false;
-        this.fallThroughToEnd = false;
+        this.branchToEnd = branchToEnd;
+        this.fallThroughToEnd = fallThroughToEnd;
     }
 
-    public BlockEntry(OpCode opcode,BlockEntry block, ValueType vt) {
-        assert opcode == OpCode.ELSE;
-        this.opcode = opcode;
-        this.stackptr = block.getStackptr();
-        this.vt = vt;
-        this.branchToEnd = block.isBranchToEnd();
-        this.fallThroughToEnd = false;
+    public BlockEntry toElse() {
+        if (opcode != OpCode.IF) {
+            throw new AssertionError();
+        }
+        return new BlockEntry(OpCode.ELSE, stackptr, vt, isEndReachable(), false);
     }
-
+    
     public boolean isEndReachable() {
         return branchToEnd || fallThroughToEnd;
     }

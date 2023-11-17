@@ -138,8 +138,8 @@ public class TypeStack {
                 if (vt != V00) {
                     vtstack.pop();
                 }
+                currentBlock = currentBlock.toElse();
                 blocks.pop();
-                currentBlock = new BlockEntry(OpCode.ELSE,currentBlock, vt);
                 blocks.push(currentBlock);
                 break;
             case END:
