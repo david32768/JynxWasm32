@@ -3,6 +3,7 @@ package jynxwasm32;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -57,22 +58,10 @@ public class JynxFunction {
         String from = fn.getFieldName().equals(jvmname)?"":" ; " + fn.getFieldName();
         String access = fn.isPrivate()?"private":"public";
         pw.format(".method %s static %s%s%s%n",access,jvmname,fn.getFnType().wasmString(),from);
-        int maxlocal = 0;
-        for (Local local:fn.getLocals()) {
-            ValueType vt = local.getType();
-            maxlocal += vt.getStackSize();
-            if (local.isParm()) {
-                String name = local.getDebugName();
-                if (name != null) {
-                    pw.format(".parameter %d final %s%n",local.getNumber(),name);
-                }
-            } else {
-                JynxOpCode init = JynxOpCode.localInit(vt);
-                pw.format("  %s %s%n", init, local.getName());
-            }
-        }
+        int maxlocal = printInit(fn.getLocals(), fn.getVarsToInit());
         // + 2 to allow use of one temp variable when generating jynx which may be double or long
         maxlocal += 2;
+
         List<Instruction>  insts = optimize(fn.getInsts());
 
         stats.addStats(fn.getFieldName(), insts);
@@ -84,6 +73,30 @@ public class JynxFunction {
         pw.format(".limit stack %d%n",maxstack);
         pw.println(".end_method");
         pw.flush();
+    }
+
+    private int printInit(Local[] locals, BitSet initvars) {
+        int maxlocal = 0;
+        for (int i = 0; i < locals.length ; ++i) {
+            Local local = locals[i];
+            ValueType vt = local.getType();
+            maxlocal += vt.getStackSize();
+            if (local.isParm()) {
+                String name = local.getName();
+                int num = local.getNumber();
+                pw.format(".parameter %d %s%n", num, name);
+            }
+        }
+
+        for (int i = 0; i < locals.length ; ++i) {
+            Local local = locals[i];
+            ValueType vt = local.getType();
+            if (initvars.get(i)) {
+                JynxOpCode init = JynxOpCode.localInit(vt);
+                pw.format("  %s %s%n", init, local.getName());
+            }
+        }
+        return maxlocal;
     }
 
     private static String num2string(Number num) {

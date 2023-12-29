@@ -1,7 +1,7 @@
 package parse;
 
 import java.util.logging.Logger;
-import wasm.ControlInstruction;
+
 import wasm.Instruction;
 import wasm.OpCode;
 import wasm.UnreachableInstruction;
@@ -23,32 +23,19 @@ public class InstructionChecker {
 
     public Instruction from(Op op) {
         OpCode opcode = op.getOpCode();
-        Instruction comment = UnreachableInstruction.unreachable(op, ts);
+        Instruction comment = UnreachableInstruction.of(op, ts.getLevel());
         switch (opcode) {
             case END:
-                if (unreachable) {
-                    if (unreachablelevel != 0) {
-                        --unreachablelevel;
-                        logUnreachable(fnname, opcode);
-                        return comment;
-                    }
-                } else {
-                    ts.updateFallThroughToEnd();
+                ts.updateFallThroughToEnd(!unreachable);
+                if (unreachablelevel > 0) {
+                    --unreachablelevel;
+                    logUnreachable(fnname, opcode);
+                    return comment;
                 }
                 break;
             case ELSE:
-                if (unreachable) {
-                    if (unreachablelevel == 0) {
-                        break;
-                    }
-                    logUnreachable(fnname, opcode);
-                    return comment;
-                } else {
-                    ts.updateFallThroughToEnd();
-                }
-                break;
-            case UNREACHABLE:
-                if (unreachable) {
+                ts.updateFallThroughToEnd(!unreachable);
+                if (unreachablelevel > 0) {
                     logUnreachable(fnname, opcode);
                     return comment;
                 }
@@ -62,6 +49,7 @@ public class InstructionChecker {
                     return comment;
                 }
                 break;
+            case UNREACHABLE:
             case RETURN:
             default:
                 if (unreachable) {
@@ -71,9 +59,7 @@ public class InstructionChecker {
                 break;
         }
         Instruction inst = op.getInstruction(ts);
-        inst = ts.changeControl(inst);
-        unreachable = opcode.isTransfer()
-                || opcode == OpCode.END && !((ControlInstruction) inst).getBlock().isEndReachable();
+        unreachable = ts.changeControl(inst);
         unreachablelevel = 0;
         return inst;
     }

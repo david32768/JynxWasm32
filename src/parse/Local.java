@@ -34,11 +34,7 @@ public class Local implements CanHaveDebugName {
     }
     
     public String getName() {
-        return name == null?String.valueOf(relnum):name;
-    }
-    
-    public String getDebugName() {
-        return name;
+        return name == null? "$" + relnum: name;
     }
     
     public boolean isParm() {

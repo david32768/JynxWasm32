@@ -12,17 +12,11 @@ import parse.ValueType;
 
 public class ControlInstruction extends SimpleInstruction {
     
-    private final BlockEntry block;
     private final ValueType blocktype;
 
-    public ControlInstruction(OpCode opcode, FnType fntype, int level, BlockEntry block, ValueType blocktype) {
+    public ControlInstruction(OpCode opcode, FnType fntype, int level, ValueType blocktype) {
         super(opcode, fntype, level);
-        this.block = block;
         this.blocktype = blocktype;
-    }
-
-    public BlockEntry getBlock() {
-        return block;
     }
 
     @Override
@@ -42,8 +36,8 @@ public class ControlInstruction extends SimpleInstruction {
         OpCode opcode = op.getOpCode();
         FnType fntype;
         ValueType blocktype = V00;
-        BlockEntry block = null;
         int level = typestack.getLevel();
+        BlockEntry block;
         switch (opcode) {
             case RETURN:
                 blocktype = typestack.returnType();
@@ -84,7 +78,7 @@ public class ControlInstruction extends SimpleInstruction {
             default:
                 throw new AssertionError();
         }
-        return new ControlInstruction(opcode,fntype,level,block,blocktype);
+        return new ControlInstruction(opcode,fntype,level,blocktype);
     }
     
     public static Instruction combine(Instruction compareinst, Instruction ifinst) {
@@ -95,7 +89,7 @@ public class ControlInstruction extends SimpleInstruction {
         int code = (compareop.getCode() << 8) | ifop.getCode();
         OpCode op = OpCode.getInstance(code);
         FnType fntype = compareinst.getFnType().combine(ifinst.getFnType());
-        return new ControlInstruction(op, fntype, ifinst.getLevel(), null, ifinst.getBlockType());
+        return new ControlInstruction(op, fntype, ifinst.getLevel(), ifinst.getBlockType());
     }
     
 }

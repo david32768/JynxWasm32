@@ -2,6 +2,7 @@ package parse;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.Collections;
 import java.util.List;
 import java.util.logging.Level;
@@ -21,6 +22,7 @@ public class LocalFunction implements WasmFunction {
     private Local[] locals;
     private KindName kindName;
     private boolean found;
+    private BitSet initvars;
 
     public LocalFunction(FnType fntype, KindName kindName) {        // PlaceHolder
         this.fntype = fntype;
@@ -46,9 +48,26 @@ public class LocalFunction implements WasmFunction {
         return found;
     }
 
-    private void setLocalFunction(int fnnum, Local[] locals,
+    private static BitSet setVarsToInit(Local[] locals) {
+        BitSet result = new BitSet(locals.length);
+        result.set(0, locals.length);
+        for (int i = 0; i < locals.length ; ++i) {
+            Local local = locals[i];
+            if (local.isParm()) {
+                result.clear(i);
+            } else break;
+        }
+        return result;
+    }
+    
+    public BitSet getVarsToInit() {
+        return (BitSet)initvars.clone();
+    }
+    
+    private void setLocalFunction(int fnnum, Local[] locals, BitSet initvars,
             List<Instruction> insts, FnType fntype) {
         this.locals = locals;
+        this.initvars = initvars;
         this.insts = Collections.unmodifiableList(insts);
         if (fnnum != kindName.getNumber()) {
             String msg = String.format("set fnnum %d is different from original %d",fnnum,kindName.getNumber());
@@ -178,9 +197,10 @@ public class LocalFunction implements WasmFunction {
         Section code = Section.getSubSection(section);
         FnType fnsig = localfn.getFnType();
         Local[] locals = Local.parse(code, localfn);
+        BitSet initvars = setVarsToInit(locals);
         TypeStack ts = new TypeStack(fnsig, locals , code, module);
         ArrayList<Instruction> insts = getInsts(ts, localfn.getName());
-        localfn.setLocalFunction(fnnum, locals, insts, fnsig);
+        localfn.setLocalFunction(fnnum, locals, initvars, insts, fnsig);
         Logger.getGlobal().fine(String.format("function body %d has %d locals and %d insts",
                 i, locals.length,insts.size()));
     }

@@ -4,6 +4,7 @@ import static parse.ValueType.I32;
 import static parse.ValueType.V00;
 
 import util.LIFOStack;
+import wasm.ControlInstruction;
 import wasm.Instruction;
 import wasm.OpCode;
 
@@ -19,7 +20,7 @@ public class TypeStack {
 
     private BlockEntry currentBlock;
 
-    public TypeStack(FnType fntype, Local[] locals,Section code, WasmModule module) {
+    public TypeStack(FnType fntype, Local[] locals, Section code, WasmModule module) {
         this.fntype = fntype;
         this.vtfnr = fntype.getRtype();
         this.locals = locals;
@@ -67,8 +68,10 @@ public class TypeStack {
         return module;
     }
 
-    public void updateFallThroughToEnd() {
-        currentBlock.setFallThroughToEnd();
+    public void updateFallThroughToEnd(boolean reachable) {
+        if (reachable) {
+            currentBlock.setFallThroughToEnd();
+        }
     }
     
     private void checkStackState(BlockEntry match) {
@@ -95,7 +98,7 @@ public class TypeStack {
     public BlockEntry getCurrentBlock() {
         return currentBlock;
     }
-
+    
     public FnType getUnwind() {
         if (blocks.isEmpty()) {
             return vtstack.getUnwind(V00, 0,true);
@@ -113,11 +116,11 @@ public class TypeStack {
         return new BranchTarget(br2level, unwindft);
     }
     
-    public Instruction changeControl(Instruction inst) {
+    public boolean changeControl(final Instruction inst) {
         OpCode opcode = inst.getOpCode();
         FnType optype = inst.getFnType();
-        BranchTarget target;
         ValueType vtr;
+        boolean unreachable = false;
         switch (opcode) {
             case IF:
                 vtstack.adjustStack(optype);
@@ -151,6 +154,7 @@ public class TypeStack {
                 } else {
                     vtstack.adjustStack(optype);
                 }
+                unreachable = !currentBlock.isEndReachable();
                 blocks.pop();
                 currentBlock = blocks.peek();
                 int oldfloor = currentBlock == null?0:currentBlock.getStackptr();
@@ -185,7 +189,7 @@ public class TypeStack {
                 vtstack.adjustStack(optype);
                 break;
         }
-        return inst;
+        return opcode.isTransfer() || unreachable;
     }
 
     @Override

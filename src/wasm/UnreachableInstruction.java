@@ -25,8 +25,8 @@ public class UnreachableInstruction extends SimpleInstruction {
         return result;
     }
     
-    public static Instruction unreachable(Op op, TypeStack typestack) {
-        return new UnreachableInstruction(op, typestack.getLevel());
+    public static Instruction of(Op op, int level) {
+        return new UnreachableInstruction(op, level);
     }
     
 }

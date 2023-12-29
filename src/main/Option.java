@@ -75,10 +75,13 @@ public enum Option {
                 .forEach(opt->System.err.format("    --%-16s %s%n", opt, opt.msg));
     }
     
-    private static final String VERSION = "0.1.7.1";
-
+    private static final int VERSION = 0;
+    private static final int RELEASE = 1;
+    private static final int RUST = 7;
+    private static final int BUILD = 2;
+    
     public static String version() {
-        return VERSION;
+        return String.format("%d.%d.%d.%d", VERSION,RELEASE, RUST, BUILD);
     }
     
 }
