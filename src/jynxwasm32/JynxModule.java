@@ -121,17 +121,19 @@ public class JynxModule {
         pw.println(".end_annotation");
         pw.println();
     }
+
+    private final static String WASMRUN_PACKAGE = "com/github/david32768/jynxwasi/";
     
     private void defineFields() {
         if (module.getTables().size() > 1) {
             throw new UnsupportedOperationException("At most one table in MVP");
         }
+        pw.format(".field private final static %s L%sEnvironment;%n",
+            "__Environment", WASMRUN_PACKAGE);
         for (Table table: module.getTables()) {
-            pw.format(".field private final static %s Lwasmrun/Table;%n",
-                table.getDefaultName());
             if (table.isExported()) {
-                pw.format(".field public final static %s Lwasmrun/Table;%n",
-                    javaName.simpleName(table));
+                pw.format(".field public final static %s L%sTable;%n",
+                    javaName.simpleName(table), WASMRUN_PACKAGE);
             }
         }
         if (module.getMemories().size() > 1) {
@@ -141,11 +143,9 @@ public class JynxModule {
             if (memory.getMemoryNum() == 0 && !memory.getKindName().getFieldName().equals("memory")) {
                 Logger.getGlobal().warning("memory 0 is not exported as 'memory' so cannot use wasi methods");
             }
-            pw.format(".field private final static %s Lwasmrun/Storage;%n",
-                memory.getDefaultName());
             if (memory.isExported()) {
-                pw.format(".field public final static %s Lwasmrun/Storage;%n",
-                    javaName.simpleName(memory));
+                pw.format(".field public final static %s L%sStorage;%n",
+                    javaName.simpleName(memory), WASMRUN_PACKAGE);
             }
         }
         
@@ -188,6 +188,9 @@ public class JynxModule {
         String spacer = "  ";
         pw.print(spacer);
         pw.format("%s __initGlobals()V%n",OpCode.CALL);
+        pw.println("; initialise Envoronment");
+        pw.print(spacer);
+        pw.format("%s %d %d%n", JynxOpCode.ENVIRONMENT_NEW, module.getTables().size(), module.getMemories().size());
         pw.println("; initialise tables");
         for (Table table:module.getTables()) {
             pw.print(spacer);
@@ -244,30 +247,24 @@ public class JynxModule {
         pw.format(".method private static __init%s()V%n",table.getDefaultName());
         if (table.isImported()) {
             pw.print(spacer);
-            pw.format("%s %s%n",JynxOpCode.TABLE_GLOBAL_GET,javaName.of(table));
-            pw.print(spacer);
-            pw.format("%s %s%n",JynxOpCode.TABLE_GLOBAL_SET,table.getDefaultName());
+            pw.format("%s %s %d%n", JynxOpCode.ENVIRONMENT_IMPORT_TABLE,javaName.of(table), num);
             pw.print(spacer);
             pw.format("%s%n",OpCode.RETURN);
             pw.println(".end_method");
             return;
         }
         pw.print(spacer);
-        pw.format("%s%n",JynxOpCode.TABLE_NEW);
-        pw.print(spacer);
-        pw.format("%s %s%n",JynxOpCode.TABLE_GLOBAL_SET,table.getDefaultName());
-        pw.print(spacer);
-        pw.format("%s %s%n",JynxOpCode.TABLE_GLOBAL_GET,table.getDefaultName());
+        pw.format("%s%n",JynxOpCode.TABLE_BUILD);
 
         for (TableElement element:table.getElements()) {
             printTableElement(jynx,element,spacer);
         }
 
         pw.print(spacer);
+        pw.format("%s %d%n",JynxOpCode.ENVIRONMENT_ADD_TABLE, num);
         if (table.isExported()) {
-            pw.format("%s %s%n",JynxOpCode.TABLE_GLOBAL_SET,javaName.simpleName(table));
-        } else {
-            pw.format("%s%n",OpCode.DROP);
+            pw.println(spacer);
+            pw.format("%s %d %s%n",JynxOpCode.ENVIRONMENT_EXPORT_TABLE, num, javaName.simpleName(table));
         }
         pw.print(spacer);
         pw.format("%s%n",OpCode.RETURN);
@@ -327,22 +324,17 @@ public class JynxModule {
         int maximum = limits.hasMaximum()?limits.getMaximum():0;
         if (memory.isImported()) {
             pw.print(spacer);
-            String name = javaName.of(memory);
-            pw.format("%s %s%n",JynxOpCode.MEMORY_GLOBAL_GET,name);
+            pw.format("%s %s %d%n", JynxOpCode.ENVIRONMENT_IMPORT_STORAGE, javaName.of(memory), num);
             pw.print(spacer);
-            pw.format("%s %s%n",JynxOpCode.MEMORY_GLOBAL_SET,memory.getDefaultName());
-            pw.print(spacer);
-            pw.format("%s %d %d %d%n",JynxOpCode.MEMORY_CHECK,limits.getInitial(),maximum,num);
+            pw.format("%s %d %d %d%n", JynxOpCode.MEMORY_CHECK, limits.getInitial(), maximum, num);
         } else {
             pw.print(spacer);
             pw.format("%s %d %d%n",JynxOpCode.MEMORY_NEW,limits.getInitial(),maximum);
             pw.print(spacer);
-            pw.format("%s %s%n",JynxOpCode.MEMORY_GLOBAL_SET,memory.getDefaultName());
+            pw.format("%s %d%n", JynxOpCode.ENVIRONMENT_ADD_STORAGE, num);
             if (memory.isExported()) {
                 pw.print(spacer);
-                pw.format("%s %s%n",JynxOpCode.MEMORY_GLOBAL_GET,memory.getDefaultName());
-                pw.print(spacer);
-                pw.format("%s %s%n",JynxOpCode.MEMORY_GLOBAL_SET,javaName.simpleName(memory));
+                pw.format("%s %d %s%n",JynxOpCode.ENVIRONMENT_EXPORT_STORAGE, num, javaName.simpleName(memory));
             }
         }
         for (Data_segment ds:memory.getData()) {
