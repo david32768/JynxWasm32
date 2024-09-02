@@ -299,7 +299,9 @@ public class JynxFunction {
     private static boolean needUnwind(FnType unwind) {
         int numparms = unwind.numParms();
         ValueType rvt = unwind.getRtype();
-        return rvt.getStackSize() !=  numparms; 
+        assert rvt == V00 || unwind.lastParm().isCompatible(rvt);
+        int reqnum = rvt == V00? 0: 1;
+        return reqnum != numparms;
     }
     
     private void brpop(String spacer, FnType unwind) {

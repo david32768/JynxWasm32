@@ -47,7 +47,7 @@ public enum Option {
             String argi = args[i];
             Optional<Option> opt =  getInstance(argi);
             if (!opt.isPresent()) {
-                String msg = String.format("unknown option - %s",argi);
+                String msg = String.format("unknown option: %s",argi);
                 throw new IllegalArgumentException(msg);
             }
             Option option = opt.get();
@@ -78,7 +78,7 @@ public enum Option {
     private static final int VERSION = 0;
     private static final int RELEASE = 1;
     private static final int RUST = 7;
-    private static final int BUILD = 3;
+    private static final int BUILD = 4;
     
     public static String version() {
         return String.format("%d.%d.%d.%d", VERSION,RELEASE, RUST, BUILD);

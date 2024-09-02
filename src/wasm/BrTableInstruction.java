@@ -18,7 +18,7 @@ public class BrTableInstruction extends SimpleInstruction {
     }
 
     public BranchTarget[] getTargets() {
-        return targets;
+        return targets.clone();
     }
 
     @Override
