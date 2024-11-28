@@ -16,8 +16,8 @@ public class MemoryInstruction extends SimpleInstruction {
     private final int offset;
     private final int alignment;
 
-    public MemoryInstruction(OpCode opcode, FnType fntype, ValueType memtype, int offset, int alignment, int level) {
-        super(opcode, fntype,level);
+    public MemoryInstruction(OpCode opcode, FnType fntype, ValueType memtype, int offset, int alignment) {
+        super(opcode, fntype);
         this.memtype = memtype;
         this.offset = offset;
         if (alignment > memtype.alignment() || alignment < 0) {
@@ -66,7 +66,7 @@ public class MemoryInstruction extends SimpleInstruction {
         if (memtype == null) {
             throw new AssertionError();
         }
-        return new MemoryInstruction(opcode,fntype,memtype,offset,alignment,typestack.getLevel());
+        return new MemoryInstruction(opcode,fntype,memtype,offset,alignment);
     }
 
     public static Instruction memstore(Op op, TypeStack typestack) {
@@ -82,7 +82,7 @@ public class MemoryInstruction extends SimpleInstruction {
         if (memtype == null) {
             throw new AssertionError();
         }
-        return new MemoryInstruction(opcode,fntype,memtype,offset,alignment,typestack.getLevel());
+        return new MemoryInstruction(opcode,fntype,memtype,offset,alignment);
     }
     
 }

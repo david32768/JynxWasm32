@@ -76,12 +76,12 @@ public enum Option {
     }
     
     private static final int VERSION = 0;
-    private static final int RELEASE = 1;
-    private static final int RUST = 7;
-    private static final int BUILD = 4;
+    private static final int RELEASE = 2;
+    private static final String RUST = "82";
+    private static final int BUILD = 0;
     
     public static String version() {
-        return String.format("%d.%d.%d.%d", VERSION,RELEASE, RUST, BUILD);
+        return String.format("%d.%d.%s.%d", VERSION, RELEASE, RUST, BUILD);
     }
     
 }

@@ -1,13 +1,11 @@
 package jynxwasm32;
 
 import java.io.PrintWriter;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.BitSet;
 import java.util.List;
 import java.util.logging.Logger;
 
-import static parse.ValueType.*;
+import static parse.ValueType.V00;
 import static wasm.OpCode.MEMORY_COPY;
 
 import parse.BranchTarget;
@@ -22,14 +20,15 @@ import parse.WasmFunction;
 import parse.WasmModule;
 import wasm.BrTableInstruction;
 import wasm.BranchInstruction;
-import wasm.ControlInstruction;
+import wasm.ConstantInstruction;
 import wasm.Instruction;
+import wasm.InvokeInstruction;
+import wasm.MemoryFunctionInstruction;
 import wasm.MemoryInstruction;
-import wasm.ObjectInstruction;
 import wasm.OpCode;
 import wasm.OpType;
-import wasm.SimpleInstruction;
 import wasm.UnreachableInstruction;
+import wasm.VariableInstruction;
 
 public class JynxFunction {
     
@@ -58,24 +57,23 @@ public class JynxFunction {
         String from = fn.getFieldName().equals(jvmname)?"":" ; " + fn.getFieldName();
         String access = fn.isPrivate()?"private":"public";
         pw.format(".method %s static %s%s%s%n",access,jvmname,fn.getFnType().wasmString(),from);
-        int maxlocal = printInit(fn.getLocals(), fn.getVarsToInit());
-        // + 2 to allow use of one temp variable when generating jynx which may be double or long
-        maxlocal += 2;
+        int maxlocal = printInit(fn);
 
-        List<Instruction>  insts = optimize(fn.getInsts());
+        List<Instruction>  insts = Optimiser.optimize(fn.getInsts());
 
         stats.addStats(fn.getFieldName(), insts);
 
         int maxstack = printInsts(insts, fn.getFieldName(), fn.getFnType().getRtype());
-        // + 4 for extended ops
-        maxstack += 4;
-        pw.format(".limit locals %d%n",maxlocal);
-        pw.format(".limit stack %d%n",maxstack);
+
+        pw.format("; locals %d stack %d; + macro instruction requirements%n", maxlocal, maxstack);
         pw.println(".end_method");
         pw.flush();
     }
 
-    private int printInit(Local[] locals, BitSet initvars) {
+    private int printInit(LocalFunction fn) {
+        Local[] locals = fn.getLocals();
+        BitSet initvars = fn.getVarsToInit();
+        List<Instruction> insts = fn.getInsts();
         int maxlocal = 0;
         for (int i = 0; i < locals.length ; ++i) {
             Local local = locals[i];
@@ -88,6 +86,11 @@ public class JynxFunction {
             }
         }
 
+        try {
+            initvars = NeedInit.uninitialisedVar(initvars, insts);
+        } catch (AssertionError ex) {
+            System.err.format("fn %s%n%s%n", javaName.simpleName(fn), ex);
+        }
         for (int i = 0; i < locals.length ; ++i) {
             Local local = locals[i];
             ValueType vt = local.getType();
@@ -127,58 +130,15 @@ public class JynxFunction {
         return numstr;
     }
 
-    private Instruction compareOptimise(Instruction inst, Instruction last) {
-        Instruction optlast = null;
-        OpCode opcode = inst.getOpCode();
-        switch(opcode) {
-            case BR_IF:
-                BranchInstruction brinst = (BranchInstruction)inst;
-                BranchTarget target = brinst.getTarget();
-                FnType unwind = target.getUnwind();
-                if (!needUnwind(unwind)) {
-                    optlast = BranchInstruction.combine(last, inst);
-                }
-                break;
-            case SELECT:
-                optlast = SimpleInstruction.combine(last,inst);
-                break;
-            case IF:
-                optlast = ControlInstruction.combine(last, inst);
-                break;
-        }
-        return optlast;
-    }
-    
-    private List<Instruction> optimize(List<Instruction> insts) {
-        List<Instruction>  result = new ArrayList<>();
-        Instruction last = null;
-        for (Instruction inst:insts) {
-            if (last != null) {
-                OpType lasttype = last.getOpCode().getOpType();
-                if (lasttype == OpType.COMPARE) {
-                    Instruction optlast = compareOptimise(inst, last);
-                    if (optlast != null) {
-                        last = optlast;
-                        inst = null;
-                    }
-                }
-                result.add(last);
-            }
-            last = inst;
-        }
-        if (last != null) {
-            result.add(last);
-        }
-        return result;
-    }
-    
     private int printInsts(List<Instruction>  insts, String field_name, ValueType rt) {
         pw.format("  %s%n", OpCode.BLOCK);
+        int level = 1;
         ValueTypeStack vts = new ValueTypeStack();
         for (Instruction inst : insts) {
-            char[] spaces = new char[inst.getLevel() * 2];
-            Arrays.fill(spaces, ' ');
-            String spacer = String.valueOf(spaces);
+            OpCode op = inst.getOpCode();
+            int mylevel = level + op.myLevelChange();
+            String spacer = "  ".repeat(mylevel);
+            level += op.levelChange();
             String before = vts.toString();
             FnType fntypex = inst.getFnType();
             try {
@@ -214,6 +174,9 @@ public class JynxFunction {
             case VARIABLE:
                 variable(spacer, inst, comment);
                 break;
+            case INVOKE:
+                invoke(spacer, inst, comment);
+                break;
             case MEMLOAD:
             case MEMSTORE:
                 memory(spacer, inst, comment);
@@ -230,18 +193,18 @@ public class JynxFunction {
                 brtablex(spacer, inst, comment);
                 break;
             case MEMFN:
-                long mems = inst.getImm1().longValue();
+                MemoryFunctionInstruction memfninst = (MemoryFunctionInstruction)inst;
+                int memidx1 = memfninst.memidx1();
                 if (opcode == MEMORY_COPY) {
-                    int mem1 = (int)(mems >> 32);
-                    int mem2 = (int)mems;
-                    pw.format("%s  %s %d %d%s%n", spacer,opcode,mem1,mem2,comment);
+                    int memidx2 = memfninst.memidx2();
+                    pw.format("%s  %s %d %d%s%n", spacer,opcode,memidx1,memidx2,comment);
                 } else {
-                    int mem = (int)mems;
-                    pw.format("%s  %s %d%s%n", spacer,opcode,mem,comment);
+                    pw.format("%s  %s %d%s%n", spacer,opcode,memidx1,comment);
                 }
                 break;
             case CONST:
-                pw.format("%s  %s %s%s%n", spacer,opcode,num2string(inst.getImm1()),comment);
+                ConstantInstruction constinst = (ConstantInstruction)inst;
+                pw.format("%s  %s %s%s%n", spacer,opcode,num2string(constinst.getConstant()),comment);
                 break;
             case PARAMETRIC:
             default:
@@ -296,43 +259,33 @@ public class JynxFunction {
         }
     }
 
-    private static boolean needUnwind(FnType unwind) {
-        int numparms = unwind.numParms();
-        ValueType rvt = unwind.getRtype();
-        assert rvt == V00 || unwind.lastParm().isCompatible(rvt);
-        int reqnum = rvt == V00? 0: 1;
-        return reqnum != numparms;
-    }
-    
-    private void brpop(String spacer, FnType unwind) {
-        if (!needUnwind(unwind)) {
-            return;
+    private void brpop(String spacer, BranchTarget target) {
+        if (target.needUnwind()) {
+            pw.format("%s  %s %s%n", spacer,JynxOpCode.UNWIND, target.getUnwind().wasmString());
         }
-        pw.format("%s  %s %s%n", spacer,JynxOpCode.UNWIND,unwind.wasmString());
     }
 
     private void branch(String spacer,Instruction inst, String comment) {
         BranchInstruction brinst = (BranchInstruction)inst;
         BranchTarget target = brinst.getTarget();
-        FnType unwind = target.getUnwind();
         int level = target.getBr2level();
         switch(inst.getOpCode()) {
             case BR_IF:
-                if (!needUnwind(unwind)) {
+                if (!target.needUnwind()) {
                     pw.format("%s  %s %d%s%n",spacer,OpCode.BR_IF, level,comment);
                     return;
                 }
                 pw.format("%s; %s%n",spacer,comment);
                 pw.format("%s  %s%n",spacer,OpCode.IF);
                 String indent = spacer + "  ";
-                brpop(indent,unwind);
+                brpop(indent, target);
                 pw.format("%s  %s %d%n",indent,OpCode.BR,level+1);
                 pw.format("%s  %s%n",spacer,OpCode.END);
                 break;
             case BR:
-                if (needUnwind(unwind)) {
+                if (target.needUnwind()) {
                     pw.format("%s; %s%n",spacer,comment);
-                    brpop(spacer,unwind);
+                    brpop(spacer, target);
                     pw.format("%s  %s %d%n",spacer,OpCode.BR,level);
                 } else {
                     pw.format("%s  %s %d%s%n",spacer,OpCode.BR,level,comment);
@@ -356,9 +309,8 @@ public class JynxFunction {
         BranchTarget deftarget = targets[targets.length - 1];
         int label = labnum;
         labnum += targets.length;
-        FnType defunwind = deftarget.getUnwind();
         pw.format("%s  %s default",spacer,OpCode.BR_TABLE);
-        if (needUnwind(defunwind)) {
+        if (deftarget.needUnwind()) {
             int deflab = label + targets.length - 1;
             pw.format(" L%d .array%n",deflab);
         } else {
@@ -369,7 +321,7 @@ public class JynxFunction {
             BranchTarget target = targets[i];
             if (target.getBr2level() != deftarget.getBr2level()) {
                 FnType unwind = target.getUnwind();
-                if (needUnwind(unwind)) {
+                if (target.needUnwind()) {
                     pw.format("%s    %d -> L%d ; %s%n", spacer, i, labi, unwind);
                 } else {
                     pw.format("%s    %d -> %d%n", spacer, i, target.getBr2level());
@@ -380,10 +332,9 @@ public class JynxFunction {
         for (int i = 0; i < targets.length;++i) {
             BranchTarget target = targets[i];
             if (target.getBr2level() != deftarget.getBr2level()) {
-                FnType unwind = target.getUnwind();
-                if (needUnwind(unwind)) {
+                if (target.needUnwind()) {
                     pw.format("%s  L%d:%n", spacer,(label + i));
-                    brpop(spacer,unwind);
+                    brpop(spacer, target);
                     pw.format("%s  %s %d%n", spacer,OpCode.BR,target.getBr2level());
                 }
             }
@@ -395,7 +346,7 @@ public class JynxFunction {
         ValueType vtr = fntype.getRtype();
         ValueType vt1 = fntype.getType(1);
         ValueType varvt = vtr == V00?vt1:vtr;
-        ObjectInstruction objinst  = (ObjectInstruction)inst;
+        VariableInstruction objinst  = (VariableInstruction)inst;
         Object obj = objinst.getObject();
         String name;
         Local local;
@@ -405,19 +356,27 @@ public class JynxFunction {
             case LOCAL_SET:
             case LOCAL_TEE:
                 local = (Local)obj;
-                pw.format("%s  %s %s%s%n",
-                        spacer,opcode,local.getName(),comment);
+                pw.format("%s  %s_%s %s%s%n",
+                        spacer, varvt, opcode, local.getName(), comment);
                 break;
             case GLOBAL_GET:
-                name = javaName.localName(((Global)obj));
-                JynxOpCode get = JynxOpCode.globalGet(varvt);
-                pw.format("%s  %s %s%s%n",spacer,get,name,comment);
-                break;
             case GLOBAL_SET:
                 name = javaName.localName(((Global)obj));
-                JynxOpCode set = JynxOpCode.globalSet(varvt);
-                pw.format("%s  %s %s%s%n",spacer,set,name,comment);
+                pw.format("%s  %s_%s %s%s%n",
+                        spacer, varvt, opcode, name, comment);
                 break;
+            default:
+                throw new AssertionError();
+        }
+    }
+
+    private void invoke(String spacer,Instruction inst, String comment) {
+        FnType fntype = inst.getFnType();
+        InvokeInstruction objinst  = (InvokeInstruction)inst;
+        Object obj = objinst.getObject();
+        String name;
+        OpCode opcode = inst.getOpCode();
+        switch(opcode) {
             case CALL:
                 WasmFunction called = (WasmFunction)obj;
                 name = javaName.localName(called);

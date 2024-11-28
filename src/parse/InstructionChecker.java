@@ -23,7 +23,7 @@ public class InstructionChecker {
 
     public Instruction from(Op op) {
         OpCode opcode = op.getOpCode();
-        Instruction comment = UnreachableInstruction.of(op, ts.getLevel());
+        Instruction comment = UnreachableInstruction.of(op);
         switch (opcode) {
             case END:
                 ts.updateFallThroughToEnd(!unreachable);

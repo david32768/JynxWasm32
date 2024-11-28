@@ -3,11 +3,12 @@ package parse;
 import java.util.ArrayList;
 
 import static parse.Reason.M204;
+import wasm.ConstantInstruction;
 
 import wasm.Instruction;
-import wasm.ObjectInstruction;
 import wasm.OpCode;
 import wasm.OpType;
+import wasm.VariableInstruction;
 
 public class ConstantExpression {
 
@@ -28,7 +29,7 @@ public class ConstantExpression {
             return null;
         }
         assert opcode.getOpType() == OpType.CONST;
-        return constinst.getImm1();
+        return ((ConstantInstruction)constinst).getConstant();
     }
         
     public Instruction getConstInst() {
@@ -41,7 +42,7 @@ public class ConstantExpression {
             return String.format("(%s)",constinst);
         }
         assert opcode.getOpType() == OpType.CONST;
-        return constinst.getImm1().toString();
+        return ((ConstantInstruction)constinst).getConstant().toString();
     }
         
     public static ConstantExpression parseConstantExpression(WasmModule module, Section section)  {
@@ -64,7 +65,7 @@ public class ConstantExpression {
         Instruction constinst = insts.get(0);
         opcode = constinst.getOpCode();
         if (opcode == OpCode.GLOBAL_GET) {
-            ObjectInstruction objinst = (ObjectInstruction)constinst;
+            VariableInstruction objinst = (VariableInstruction)constinst;
             Global global = (Global)objinst.getObject();
             if (!global.isImported()) {
                 String msg = String.format("global used in a constant expressio must be imported: %s",global);

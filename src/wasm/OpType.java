@@ -4,8 +4,9 @@ import java.util.function.BiFunction;
 
 import parse.BrTableOp;
 import parse.BranchOp;
+import parse.ConstantOp;
 import parse.ControlOp;
-import parse.ImmediateOp;
+import parse.MemoryFunctionOp;
 import parse.MemoryOp;
 import parse.ObjectOp;
 import parse.Op;
@@ -21,9 +22,10 @@ public enum OpType {
     COMPARE(SimpleInstruction::compare,SimpleOp::getInstance),
 
     PARAMETRIC(SimpleInstruction::parametric,SimpleOp::getInstance),
-    VARIABLE(ObjectInstruction::variable,ObjectOp::getInstance),
-    CONST(ImmediateInstruction::constant,ImmediateOp::getConstant),
-    MEMFN(ImmediateInstruction::memfn,ImmediateOp::getMemfn),
+    VARIABLE(VariableInstruction::variable,ObjectOp::getInstance),
+    INVOKE(InvokeInstruction::invoke,ObjectOp::getInstance),
+    CONST(ConstantInstruction::constant,ConstantOp::getInstance),
+    MEMFN(MemoryFunctionInstruction::getInstance,MemoryFunctionOp::getInstance),
     MEMLOAD(MemoryInstruction::memload,MemoryOp::getInstance),
     MEMSTORE(MemoryInstruction::memstore,MemoryOp::getInstance),
     CONTROL(ControlInstruction::control,ControlOp::getInstance),

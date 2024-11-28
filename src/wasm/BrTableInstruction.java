@@ -12,8 +12,8 @@ public class BrTableInstruction extends SimpleInstruction {
     private final BranchTarget[] targets;
 
 
-    public BrTableInstruction(OpCode opcode, FnType fntype, int level, BranchTarget[] targets) {
-        super(opcode, fntype,level);
+    public BrTableInstruction(OpCode opcode, FnType fntype, BranchTarget[] targets) {
+        super(opcode, fntype);
         this.targets = targets;
     }
 
@@ -53,6 +53,6 @@ public class BrTableInstruction extends SimpleInstruction {
             int br2label = br2levels[i];
             targets[i] = typestack.getTarget(br2label, false);
         }
-        return new BrTableInstruction(op.getOpCode(),fntype,typestack.getLevel(),targets);
+        return new BrTableInstruction(op.getOpCode(),fntype,targets);
     }
 }

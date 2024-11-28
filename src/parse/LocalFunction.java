@@ -133,10 +133,12 @@ public class LocalFunction implements WasmFunction {
         StringBuilder sb = new StringBuilder();
         ValueTypeStack vts = new ValueTypeStack();
         sb.append(String.format("// function %s %s%n",fnname,fnsig));
+        int level = 1;
         for (Instruction inst : insts) {
-            char[] spaces = new char[inst.getLevel() * 2];
-            Arrays.fill(spaces, ' ');
-            String spacer = String.valueOf(spaces);
+            OpCode op = inst.getOpCode();
+            int mylevel = level + op.myLevelChange();
+            String spacer = "  ".repeat(mylevel);
+            level += op.levelChange();
             sb.append(String.format("%s%s // %s", spacer, inst, vts));
             FnType optype = inst.getFnType();
             vts.adjustStack(optype);

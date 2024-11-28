@@ -3,7 +3,7 @@
   This (2JYNX) reads a wasm file and produces a jynx file (JynxMacro library required to assemble).
 It can also just parse a wasm file (PARSE).
 It can be tested (TESTPARSE) with a w3c-1.0 testsuite file that contains 'module binary' sections.
-It uses Java version V1.8.
+It uses Java version V17.
 
 The supported extensions to the mvp are
 
@@ -15,7 +15,7 @@ The supported extensions to the mvp are
 
 ## Usage
 
-Usage: (version 0.1.7.1)
+Usage: (version 0.2.82.0)
 
 ```
 2JYNX [options] wasm-file

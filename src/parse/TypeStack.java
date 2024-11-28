@@ -4,7 +4,6 @@ import static parse.ValueType.I32;
 import static parse.ValueType.V00;
 
 import util.LIFOStack;
-import wasm.ControlInstruction;
 import wasm.Instruction;
 import wasm.OpCode;
 
@@ -58,10 +57,6 @@ public class TypeStack {
 
     public ValueType returnType() {
         return vtfnr;
-    }
-
-    public int getLevel() {
-        return blocks.size();
     }
 
     public WasmModule getModule() {

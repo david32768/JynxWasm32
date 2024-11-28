@@ -53,7 +53,7 @@ public class ObjectOp implements Op {
                 break;
             case CALL_INDIRECT:
                 index = section.typeidx();
-                index2 = section.getUByte();
+                index2 = section.tableidx();
                 if (index2 != 0) { // future table number?
                     // "zero flag expected"
                     throw new ParseException(M109,"opcode = %s flag = %d",opcode,index2);

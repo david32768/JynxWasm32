@@ -13,22 +13,15 @@ public class SimpleInstruction implements Instruction {
 
     private final OpCode opcode;
     private final FnType fntype;
-    private final int level;
     
-    public SimpleInstruction(OpCode opcode, FnType fntype, int level) {
+    public SimpleInstruction(OpCode opcode, FnType fntype) {
         this.opcode = opcode;
         this.fntype = fntype;
-        this.level = level;
     }
 
     @Override
     public FnType getFnType() {
         return fntype;
-    }
-
-    @Override
-    public int getLevel() {
-        return level;
     }
 
     @Override
@@ -49,7 +42,7 @@ public class SimpleInstruction implements Instruction {
             throw new AssertionError();
         }
         FnType fntype = FnType.binary(vt);
-        return new SimpleInstruction(opcode,fntype,typestack.getLevel());
+        return new SimpleInstruction(opcode,fntype);
     }
     
     public static Instruction unary(Op op, TypeStack typestack) {
@@ -59,7 +52,7 @@ public class SimpleInstruction implements Instruction {
             throw new AssertionError();
         }
         FnType fntype = FnType.unary(vt);
-        return new SimpleInstruction(opcode,fntype,typestack.getLevel());
+        return new SimpleInstruction(opcode,fntype);
     }
     
     public static Instruction transform(Op op, TypeStack typestack) {
@@ -70,7 +63,7 @@ public class SimpleInstruction implements Instruction {
             throw new AssertionError();
         }
         FnType fntype = FnType.transform(vt, vt_last);
-        return new SimpleInstruction(opcode,fntype,typestack.getLevel());
+        return new SimpleInstruction(opcode,fntype);
     }
 
     public static Instruction compare(Op op, TypeStack typestack) {
@@ -83,7 +76,7 @@ public class SimpleInstruction implements Instruction {
         if (opcode == OpCode.I32_EQZ || opcode == OpCode.I64_EQZ) {
             fntype = FnType.transform(B32, vt);
         }
-        return new SimpleInstruction(opcode,fntype,typestack.getLevel());
+        return new SimpleInstruction(opcode,fntype);
     }
     
     public static Instruction parametric(Op op, TypeStack typestack) {
@@ -105,7 +98,7 @@ public class SimpleInstruction implements Instruction {
             default:
                 throw new AssertionError();
         }
-        return new SimpleInstruction(opcode, fntype,typestack.getLevel());
+        return new SimpleInstruction(opcode, fntype);
     }
     
     public static Instruction combine(Instruction compareinst, Instruction select) {
@@ -116,7 +109,7 @@ public class SimpleInstruction implements Instruction {
         int code = (compareop.getCode() << 8) | selectop.getCode();
         OpCode opcode = OpCode.getInstance(code);
         FnType fntype = compareinst.getFnType().combine(select.getFnType());
-        return new SimpleInstruction(opcode, fntype, select.getLevel());
+        return new SimpleInstruction(opcode, fntype);
     }
     
 }

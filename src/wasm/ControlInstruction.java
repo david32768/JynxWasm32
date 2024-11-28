@@ -14,8 +14,8 @@ public class ControlInstruction extends SimpleInstruction {
     
     private final ValueType blocktype;
 
-    public ControlInstruction(OpCode opcode, FnType fntype, int level, ValueType blocktype) {
-        super(opcode, fntype, level);
+    public ControlInstruction(OpCode opcode, FnType fntype,ValueType blocktype) {
+        super(opcode, fntype);
         this.blocktype = blocktype;
     }
 
@@ -36,7 +36,6 @@ public class ControlInstruction extends SimpleInstruction {
         OpCode opcode = op.getOpCode();
         FnType fntype;
         ValueType blocktype = V00;
-        int level = typestack.getLevel();
         BlockEntry block;
         switch (opcode) {
             case RETURN:
@@ -47,13 +46,11 @@ public class ControlInstruction extends SimpleInstruction {
                 }
                 break;
             case ELSE:
-                --level;
                 block = typestack.getCurrentBlock();
                 blocktype = block.getVt();
                 fntype = FnType.consume(blocktype);
                 break;
             case END:
-                --level;
                 block = typestack.getCurrentBlock();
                 blocktype = block.getVt();
                 if (block.isFallThroughToEnd()) {
@@ -78,7 +75,7 @@ public class ControlInstruction extends SimpleInstruction {
             default:
                 throw new AssertionError();
         }
-        return new ControlInstruction(opcode,fntype,level,blocktype);
+        return new ControlInstruction(opcode,fntype,blocktype);
     }
     
     public static Instruction combine(Instruction compareinst, Instruction ifinst) {
@@ -89,7 +86,7 @@ public class ControlInstruction extends SimpleInstruction {
         int code = (compareop.getCode() << 8) | ifop.getCode();
         OpCode op = OpCode.getInstance(code);
         FnType fntype = compareinst.getFnType().combine(ifinst.getFnType());
-        return new ControlInstruction(op, fntype, ifinst.getLevel(), ifinst.getBlockType());
+        return new ControlInstruction(op, fntype, ifinst.getBlockType());
     }
     
 }

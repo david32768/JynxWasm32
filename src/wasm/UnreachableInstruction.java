@@ -2,15 +2,14 @@ package wasm;
 
 import parse.FnType;
 import parse.Op;
-import parse.TypeStack;
 import parse.ValueType;
 
 public class UnreachableInstruction extends SimpleInstruction {
     
     private final Op op;
 
-    public UnreachableInstruction(Op op, int level) {
-        super(OpCode.UNREACHABLE,FnType.consume(ValueType.V00),level);
+    public UnreachableInstruction(Op op) {
+        super(OpCode.UNREACHABLE,FnType.consume(ValueType.V00));
         this.op = op;
     }
 
@@ -25,8 +24,8 @@ public class UnreachableInstruction extends SimpleInstruction {
         return result;
     }
     
-    public static Instruction of(Op op, int level) {
-        return new UnreachableInstruction(op, level);
+    public static Instruction of(Op op) {
+        return new UnreachableInstruction(op);
     }
     
 }

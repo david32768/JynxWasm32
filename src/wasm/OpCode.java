@@ -26,20 +26,20 @@ public enum OpCode {
     BR_TABLE(0x0e, BRANCH_TABLE),
     RETURN(0x0f, CONTROL),
 
-    CALL(0x10,VARIABLE),
-    CALL_INDIRECT(0x11, VARIABLE),
+    CALL(0x10,INVOKE),
+    CALL_INDIRECT(0x11, INVOKE),
 
     // parametric operators
     DROP(0x1a, PARAMETRIC),
     SELECT(0x1b,PARAMETRIC),
 
     // variable access
-    LOCAL_GET(0x20, VARIABLE), // pushes value on stack
-    LOCAL_SET(0x21, VARIABLE), // pops value off stack
-    LOCAL_TEE(0x22, VARIABLE), // pops and pushes value on stack
+    LOCAL_GET(0x20, VARIABLE), // pushes value on stack from local
+    LOCAL_SET(0x21, VARIABLE), // pops value off stack to local
+    LOCAL_TEE(0x22, VARIABLE), // LOCAL_SET, LOCAL_GET 
 
-    GLOBAL_GET(0x23, VARIABLE), // pushes object on stack
-    GLOBAL_SET(0x24, VARIABLE, MUTABLE_GLOBALS), // pops object off stack
+    GLOBAL_GET(0x23, VARIABLE), // pushes object on stack from global
+    GLOBAL_SET(0x24, VARIABLE, MUTABLE_GLOBALS), // pops object off stack tp global
 
     // memory related
     I32_LOAD(0x28, MEMLOAD),
@@ -412,13 +412,21 @@ public enum OpCode {
     }
 
     public int levelChange() {
-        switch(this) {
-            case BLOCK:case LOOP:case IF:
-                return 1;
-            case END:
-                return -1;
-            default: return 0;
+        if (optype == OpType.COMPARE_IF) {
+            return 1;
         }
+        return switch (this) {
+            case BLOCK, LOOP, IF -> 1;
+            case END -> -1;
+            default -> 0;
+        };
+    }
+
+    public int myLevelChange() {
+        return switch (this) {
+            case END, ELSE -> -1;
+            default -> 0;
+        };
     }
 
     public OpType getOpType() {

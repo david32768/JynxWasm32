@@ -23,8 +23,12 @@ import utility.Binary;
 public class Main {
 
     private static void usage() {
+        usage(Action.values());
+    }
+    
+    private static void usage(Action... actions) {
         System.err.format("\nUsage: (version %s)\n", Option.version());
-        for (Action action:Action.values()) {
+        for (Action action:actions) {
             System.err.format("\n%s [options] %s-file\n\n",action,action.extension());
             System.err.println("  Options are:\n");
             Option.print(action);
@@ -39,7 +43,7 @@ public class Main {
         ha.setFormatter(new BasicFormatter());
         root.addHandler(ha);
 
-        if (args.length < 2) {
+        if (args.length == 0) {
             usage();
             return;
         }
@@ -50,11 +54,14 @@ public class Main {
             return;
         }
         Action action = optaction.get();
+        if (args.length == 1) {
+            usage(action);
+        }
         Map<Option,String> options = Option.getOptions(action, args);
         String lastarg = args[args.length - 1];
         if (!lastarg.endsWith("." + action.extension())) {
             System.err.format("file %s has invalid extension - expected .%s%n",lastarg,action.extension());
-            usage();
+            usage(action);
             return;
         }
         Level loglevel = Level.WARNING;

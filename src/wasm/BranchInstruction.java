@@ -14,8 +14,8 @@ public class BranchInstruction extends SimpleInstruction {
     
     private final BranchTarget target;
 
-    public BranchInstruction(OpCode opcode, FnType fntype,int level, BranchTarget target) {
-        super(opcode, fntype,level);
+    public BranchInstruction(OpCode opcode, FnType fntype, BranchTarget target) {
+        super(opcode, fntype);
         this.target = target;
     }
 
@@ -57,7 +57,7 @@ public class BranchInstruction extends SimpleInstruction {
             default:
                 throw new AssertionError();
         }
-        return new BranchInstruction(opcode, fntype, typestack.getLevel(),target);
+        return new BranchInstruction(opcode, fntype,target);
     }
 
     public static Instruction combine(Instruction compareinst, Instruction brinst) {
@@ -68,7 +68,7 @@ public class BranchInstruction extends SimpleInstruction {
         int code = (compareop.getCode() << 8) | ifop.getCode();
         OpCode op = OpCode.getInstance(code);
         FnType fntype = compareinst.getFnType().combine(brinst.getFnType());
-        return new BranchInstruction(op, fntype, brinst.getLevel(),((BranchInstruction)brinst).target);
+        return new BranchInstruction(op, fntype,((BranchInstruction)brinst).target);
     }
     
 }
